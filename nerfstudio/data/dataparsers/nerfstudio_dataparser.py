@@ -261,13 +261,14 @@ class Nerfstudio(DataParser):
         if "applied_scale" in meta:
             applied_scale = float(meta["applied_scale"])
             scale_factor *= applied_scale
-        
+
         dataparser_outputs = DataparserOutputs(
             image_filenames=image_filenames,
             cameras=cameras,
             scene_box=scene_box,
             mask_filenames=mask_filenames if len(mask_filenames) > 0 else None,
-            metadata={"transform": transform_matrix, "scale_factor": scale_factor},
+            dataparser_scale=scale_factor,
+            dataparser_transform=transform_matrix,
         )
         return dataparser_outputs
 
