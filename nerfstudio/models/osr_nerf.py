@@ -256,7 +256,7 @@ class OSRNeRFModel(Model):
             "albedo_fine": albedo_fine,
             "env_lighting": env_lighting,
             "shadow": shadow,
-            "normal_map": normals,
+            "normals": normals,
             "rgb_fine": rgb_fine,
             "accumulation_coarse": accumulation_coarse,
             "accumulation_fine": accumulation_fine,
