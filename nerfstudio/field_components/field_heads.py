@@ -42,6 +42,7 @@ class FieldHeadNames(Enum):
     ALPHA = "alpha"
     GRADIENT = "gradient"
     OCCUPANCY = "occupancy"
+    SHADOW = "shadow"
 
 
 class FieldHead(FieldComponent):
@@ -205,3 +206,15 @@ class PredNormalsFieldHead(FieldHead):
         out_tensor = super().forward(in_tensor)
         out_tensor = torch.nn.functional.normalize(out_tensor, dim=-1)
         return out_tensor
+
+class ShadowFieldHead(FieldHead):
+    """Density output
+
+    Args:
+        in_dim: input dimension. If not defined in constructor, it must be set later.
+        activation: output head activation
+    """
+
+    def __init__(self, in_dim: Optional[int] = None, activation: Optional[nn.Module] = nn.Sigmoid()) -> None:
+        super().__init__(in_dim=in_dim, out_dim=1, field_head_name=FieldHeadNames.SHADOW, activation=activation)
+
