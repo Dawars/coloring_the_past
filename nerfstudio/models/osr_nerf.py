@@ -289,6 +289,7 @@ class OSRNeRFModel(Model):
         shadow = outputs["shadow"]
         env_lighting = outputs["env_lighting"] / outputs["env_lighting"].max()
         normal_map = outputs["normals"]
+        albedo = outputs["albedo_fine"]
 
         acc_coarse = colormaps.apply_colormap(outputs["accumulation_coarse"])
         acc_fine = colormaps.apply_colormap(outputs["accumulation_fine"])
@@ -306,7 +307,7 @@ class OSRNeRFModel(Model):
         )
 
         combined_rgb = torch.cat([image, rgb_coarse, rgb_fine], dim=1)
-        combined_osr = torch.cat([normal_map, env_lighting, shadow], dim=1)
+        combined_osr = torch.cat([albedo, shadow, env_lighting, normal_map], dim=1)
         combined_acc = torch.cat([acc_coarse, acc_fine], dim=1)
         combined_depth = torch.cat([depth_coarse, depth_fine], dim=1)
 
