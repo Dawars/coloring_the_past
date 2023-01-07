@@ -313,7 +313,7 @@ class SDFField(Field):
         """Set the anneal value for the proposal network."""
         self._cos_anneal_ratio = anneal
 
-    def forward_geonetwork(self, inputs):
+    def forward_geonetwork(self, inputs: TensorType["bs":..., 3]) -> TensorType["bs":...]:
         """forward the geonetwork"""
         if self.use_grid_feature:
             # TODO check how we should normalize the points
@@ -345,7 +345,7 @@ class SDFField(Field):
                 x = self.softplus(x)
         return x
 
-    def get_sdf(self, ray_samples: RaySamples):
+    def get_sdf(self, ray_samples: RaySamples) -> TensorType["bs":..., 1]:
         """predict the sdf value for ray samples"""
         positions = ray_samples.frustums.get_start_positions()
         positions_flat = positions.view(-1, 3)
@@ -353,7 +353,7 @@ class SDFField(Field):
         sdf, _ = torch.split(h, [1, self.config.geo_feat_dim], dim=-1)
         return sdf
 
-    def gradient(self, x):
+    def gradient(self, x: TensorType["bs":..., 3]) -> TensorType["bs":..., 3]:
         """compute the gradient of the ray"""
         x.requires_grad_(True)
         y = self.forward_geonetwork(x)[:, :1]
@@ -372,7 +372,9 @@ class SDFField(Field):
         density = self.laplace_density(sdf)
         return density, geo_feature
 
-    def get_alpha(self, ray_samples: RaySamples, sdf=None, gradients=None):
+    def get_alpha(self, ray_samples: RaySamples,
+                  sdf: Optional[TensorType["bs":..., 1]] = None,
+                  gradients: Optional[TensorType["bs":..., 3]] = None):
         """compute alpha from sdf as in NeuS"""
         if sdf is None or gradients is None:
             inputs = ray_samples.frustums.get_start_positions()
@@ -423,12 +425,16 @@ class SDFField(Field):
 
         return alpha
 
-    def get_occupancy(self, sdf):
+    def get_occupancy(self, sdf: TensorType["bs":..., 1]):
         """compute occupancy as in UniSurf"""
         occupancy = self.sigmoid(-10.0 * sdf)
         return occupancy
 
-    def get_colors(self, points, directions, normals, geo_features, camera_indices):
+    def get_colors(self, points: TensorType["bs":..., 3],
+                   directions: TensorType["bs":..., 3],
+                   normals: TensorType["bs":..., 3],
+                   geo_features: TensorType["bs":..., "feat"],
+                   camera_indices: TensorType["bs":...]) -> TensorType["bs":..., 3]:
         """compute colors"""
         d = self.direction_encoding(directions)
 
