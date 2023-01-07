@@ -30,7 +30,7 @@ from typing_extensions import Literal
 from nerfstudio.configs import base_config as cfg
 from nerfstudio.pipelines.base_pipeline import Pipeline
 
-CONSOLE = Console(width=120)
+CONSOLE = Console(width=120, force_terminal=False)
 
 
 def eval_load_checkpoint(config: cfg.TrainerConfig, pipeline: Pipeline) -> Path:

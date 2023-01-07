@@ -37,7 +37,7 @@ from nerfstudio.exporter.exporter_utils import Mesh
 from nerfstudio.pipelines.base_pipeline import Pipeline
 from nerfstudio.utils.rich_utils import get_progress
 
-CONSOLE = Console(width=120)
+CONSOLE = Console(width=120, force_terminal=False)
 
 
 def get_parallelogram_area(

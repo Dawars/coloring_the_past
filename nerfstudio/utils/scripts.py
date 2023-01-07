@@ -19,7 +19,7 @@ from typing import Optional
 
 from rich.console import Console
 
-CONSOLE = Console(width=120)
+CONSOLE = Console(width=120, force_terminal=False)
 
 
 def run_command(cmd: str, verbose=False) -> Optional[str]:

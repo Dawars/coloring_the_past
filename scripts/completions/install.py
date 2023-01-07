@@ -20,7 +20,7 @@ from typing_extensions import Literal, assert_never
 ConfigureMode = Literal["install", "uninstall"]
 ShellType = Literal["zsh", "bash"]
 
-CONSOLE = Console(width=120)
+CONSOLE = Console(width=120, force_terminal=False)
 
 ENTRYPOINTS = [
     "ns-install-cli",

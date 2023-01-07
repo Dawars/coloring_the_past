@@ -16,7 +16,7 @@ from typing_extensions import Annotated
 
 from nerfstudio.configs.base_config import PrintableConfig
 
-CONSOLE = Console(width=120)
+CONSOLE = Console(width=120, force_terminal=False)
 
 
 @dataclass

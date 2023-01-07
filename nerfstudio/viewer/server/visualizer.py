@@ -25,7 +25,7 @@ from rich.console import Console
 
 from nerfstudio.viewer.server.path import Path
 
-CONSOLE = Console(width=120)
+CONSOLE = Console(width=120, force_terminal=False)
 
 
 class ViewerWindow:

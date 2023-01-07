@@ -36,7 +36,7 @@ from nerfstudio.data.dataparsers.base_dataparser import (
 from nerfstudio.data.scene_box import SceneBox
 from nerfstudio.utils.io import load_from_json
 
-CONSOLE = Console(width=120)
+CONSOLE = Console(width=120, force_terminal=False)
 MAX_AUTO_RESOLUTION = 1600
 
 

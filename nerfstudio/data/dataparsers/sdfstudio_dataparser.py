@@ -36,7 +36,7 @@ from nerfstudio.data.scene_box import SceneBox
 from nerfstudio.utils.images import BasicImages
 from nerfstudio.utils.io import load_from_json
 
-CONSOLE = Console()
+CONSOLE = Console(force_terminal=False)
 
 
 def get_src_from_pairs(

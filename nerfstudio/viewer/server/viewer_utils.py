@@ -58,7 +58,7 @@ from nerfstudio.viewer.server.visualizer import Viewer
 
 warnings.filterwarnings("ignore", category=CryptographyDeprecationWarning)
 
-CONSOLE = Console(width=120)
+CONSOLE = Console(width=120, force_terminal=False)
 
 
 def get_viewer_version() -> str:

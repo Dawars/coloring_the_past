@@ -24,7 +24,7 @@ from rich.console import Console
 
 from nerfstudio.process_data.process_data_utils import CAMERA_MODELS
 
-CONSOLE = Console(width=120)
+CONSOLE = Console(width=120, force_terminal=False)
 
 
 def _find_distortion_param(calib_xml: ET.Element, param_name: str):

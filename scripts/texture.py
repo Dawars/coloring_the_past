@@ -16,7 +16,7 @@ from nerfstudio.exporter import texture_utils
 from nerfstudio.exporter.exporter_utils import get_mesh_from_filename
 from nerfstudio.utils.eval_utils import eval_setup
 
-CONSOLE = Console(width=120)
+CONSOLE = Console(width=120, force_terminal=False)
 
 
 @dataclass

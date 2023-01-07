@@ -5,7 +5,7 @@ view_dataset.py
 
 from rich.console import Console
 
-CONSOLE = Console(width=120)
+CONSOLE = Console(width=120, force_terminal=False)
 import time
 from datetime import timedelta
 from pathlib import Path

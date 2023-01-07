@@ -15,7 +15,7 @@ from rich.console import Console
 from nerfstudio.utils.eval_utils import eval_setup
 from nerfstudio.utils.marching_cubes import get_surface_occupancy, get_surface_sliding
 
-CONSOLE = Console(width=120)
+CONSOLE = Console(width=120, force_terminal=False)
 
 
 @dataclass

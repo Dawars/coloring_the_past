@@ -43,7 +43,7 @@ from nerfstudio.configs.base_config import Config  # pylint: disable=unused-impo
 from nerfstudio.pipelines.base_pipeline import Pipeline
 from nerfstudio.utils.rich_utils import ItersPerSecColumn
 
-CONSOLE = Console(width=120)
+CONSOLE = Console(width=120, force_terminal=False)
 
 
 @dataclass

@@ -51,7 +51,7 @@ from nerfstudio.configs.method_configs import AnnotatedBaseConfigUnion
 from nerfstudio.engine.trainer import Trainer
 from nerfstudio.utils import comms, profiler
 
-CONSOLE = Console(width=120)
+CONSOLE = Console(width=120, force_terminal=False)
 DEFAULT_TIMEOUT = timedelta(minutes=30)
 
 # speedup for when input size to model doesn't change (much)

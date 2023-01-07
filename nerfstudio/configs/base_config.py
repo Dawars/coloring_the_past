@@ -35,7 +35,7 @@ from nerfstudio.utils import writer
 
 warnings.filterwarnings("ignore", module="torchvision")
 
-CONSOLE = Console(width=120)
+CONSOLE = Console(width=120, force_terminal=False)
 
 # Pretty printing class
 class PrintableConfig:  # pylint: disable=too-few-public-methods
@@ -99,7 +99,7 @@ class LocalWriterConfig(InstantiateConfig):
         writer.EventName.TEST_RAYS_PER_SEC,
     )
     """specifies which stats will be logged/printed to terminal"""
-    max_log_size: int = 10
+    max_log_size: int = 0
     """maximum number of rows to print before wrapping. if 0, will print everything."""
 
     def setup(self, banner_messages: Optional[List[str]] = None, **kwargs) -> Any:

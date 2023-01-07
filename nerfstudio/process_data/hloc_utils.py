@@ -41,7 +41,7 @@ except ImportError:
 else:
     _HAS_HLOC = True
 
-CONSOLE = Console(width=120)
+CONSOLE = Console(width=120, force_terminal=False)
 
 
 def run_hloc(

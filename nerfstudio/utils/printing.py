@@ -18,7 +18,7 @@ from math import floor, log
 
 from rich.console import Console
 
-CONSOLE = Console(width=120)
+CONSOLE = Console(width=120, force_terminal=False)
 
 
 def print_tcnn_speed_warning(method_name: str):

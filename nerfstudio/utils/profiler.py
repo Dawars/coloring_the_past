@@ -30,7 +30,7 @@ from nerfstudio.utils.decorators import (
     decorate_all,
 )
 
-CONSOLE = Console(width=120)
+CONSOLE = Console(width=120, force_terminal=False)
 
 PROFILER = []
 

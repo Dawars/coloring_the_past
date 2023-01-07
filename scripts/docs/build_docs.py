@@ -7,7 +7,7 @@ import tyro
 from rich.console import Console
 from rich.style import Style
 
-CONSOLE = Console(width=120)
+CONSOLE = Console(width=120, force_terminal=False)
 
 LOCAL_TESTS = ["Run license checks", "Run Black", "Python Pylint", "Test with pytest"]
 

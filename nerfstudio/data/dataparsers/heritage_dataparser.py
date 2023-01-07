@@ -42,7 +42,7 @@ from nerfstudio.data.utils.colmap_utils import (
 from nerfstudio.model_components.ray_samplers import save_points
 from nerfstudio.utils.images import BasicImages
 
-CONSOLE = Console(width=120)
+CONSOLE = Console(width=120, force_terminal=False)
 
 
 def get_masks(image_idx: int, masks, fg_masks, sparse_pts):

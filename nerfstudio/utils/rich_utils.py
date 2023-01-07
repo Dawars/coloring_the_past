@@ -28,7 +28,7 @@ from rich.progress import (
 )
 from rich.text import Text
 
-CONSOLE = Console(width=120)
+CONSOLE = Console(width=120, force_terminal=False)
 
 
 class ItersPerSecColumn(ProgressColumn):

@@ -23,7 +23,7 @@ from typing import Any, Dict
 
 from rich.console import Console
 
-CONSOLE = Console()
+CONSOLE = Console(force_terminal=False)
 # pylint: disable=import-outside-toplevel
 
 # cannot use mutable types directly within dataclass; abstracting default factory calls

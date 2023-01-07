@@ -7,7 +7,7 @@ import nbformat as nbf
 import tyro
 from rich.console import Console
 
-CONSOLE = Console(width=120)
+CONSOLE = Console(width=120, force_terminal=False)
 
 
 def main(check: bool = False):

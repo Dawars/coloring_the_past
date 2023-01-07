@@ -26,7 +26,7 @@ from nerfstudio.configs.base_config import Config  # pylint: disable=unused-impo
 from nerfstudio.data.dataparsers.sdfstudio_dataparser import SDFStudioDataParserConfig
 from nerfstudio.utils import install_checks
 
-CONSOLE = Console(width=120)
+CONSOLE = Console(width=120, force_terminal=False)
 
 
 def _interpolate_trajectory(cameras: Cameras, num_views: int = 300):

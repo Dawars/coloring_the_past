@@ -59,7 +59,7 @@ from nerfstudio.model_components.ray_generators import RayGenerator
 from nerfstudio.utils.images import BasicImages
 from nerfstudio.utils.misc import IterableWrapper
 
-CONSOLE = Console(width=120)
+CONSOLE = Console(width=120, force_terminal=False)
 
 AnnotatedDataParserUnion = tyro.conf.OmitSubcommandPrefixes[  # Omit prefixes of flags in subcommands.
     tyro.extras.subcommand_type_from_defaults(

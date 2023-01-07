@@ -30,7 +30,7 @@ from rich.console import Console
 
 from nerfstudio.viewer.server import server
 
-CONSOLE = Console()
+CONSOLE = Console(force_terminal=False)
 
 
 def run_viewer_bridge_server_as_subprocess(

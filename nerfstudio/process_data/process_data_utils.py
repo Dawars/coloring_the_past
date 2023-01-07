@@ -26,7 +26,7 @@ from typing_extensions import Literal
 from nerfstudio.utils.rich_utils import status
 from nerfstudio.utils.scripts import run_command
 
-CONSOLE = Console(width=120)
+CONSOLE = Console(width=120, force_terminal=False)
 
 
 class CameraModel(Enum):

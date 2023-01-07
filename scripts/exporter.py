@@ -25,7 +25,7 @@ from nerfstudio.exporter.exporter_utils import (
 from nerfstudio.pipelines.base_pipeline import Pipeline
 from nerfstudio.utils.eval_utils import eval_setup
 
-CONSOLE = Console(width=120)
+CONSOLE = Console(width=120, force_terminal=False)
 
 
 @dataclass

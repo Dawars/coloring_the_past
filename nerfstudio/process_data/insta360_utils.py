@@ -24,7 +24,7 @@ from nerfstudio.process_data.process_data_utils import get_num_frames_in_video
 from nerfstudio.utils.rich_utils import status
 from nerfstudio.utils.scripts import run_command
 
-CONSOLE = Console(width=120)
+CONSOLE = Console(width=120, force_terminal=False)
 
 
 def get_insta360_filenames(data: Path) -> Tuple[Path, Path]:

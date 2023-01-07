@@ -41,7 +41,7 @@ from nerfstudio.data.scene_box import SceneBox
 # random_rotation[:3, :3] = torch.from_numpy(Rotation.random().as_matrix())
 
 
-CONSOLE = Console()
+CONSOLE = Console(force_terminal=False)
 
 
 def get_src_from_pairs(
