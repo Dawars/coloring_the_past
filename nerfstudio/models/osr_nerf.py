@@ -152,7 +152,7 @@ class OSRNeRFModel(Model):
             skip_connections=(4,),
         )
 
-        self.sh_field = SHField(1227)  # todo
+        self.sh_field = SHField(self.num_train_data)
 
         # samplers
         self.sampler_uniform = UniformSampler(num_samples=self.config.num_coarse_samples)
@@ -240,10 +240,10 @@ class OSRNeRFModel(Model):
             weights=weights_fine,
         )
 
-        components = components_from_spherical_harmonics(levels=self.sh_field.levels+1, directions=normals)
+        components = components_from_spherical_harmonics(levels=self.sh_field.levels + 1, directions=normals)
 
         env_lighting = sh * components[..., None, :]  # [..., num_samples, 3, sh_components]
-        env_lighting = torch.sum(env_lighting, dim=-1) + 0.5  # [..., num_samples, 3]  # todo +1/2?
+        env_lighting = torch.sum(env_lighting, dim=-1)  # + 0.5  # [..., num_samples, 3]
 
         rgb_fine = albedo_fine * shadow * env_lighting
 
@@ -272,7 +272,7 @@ class OSRNeRFModel(Model):
 
         rgb_loss_coarse = self.rgb_loss(image, outputs["rgb_coarse"])
         rgb_loss_fine = self.rgb_loss(image, outputs["rgb_fine"])
-        shadow_reg = torch.mean((1 - outputs['shadow']) ** 2)
+        shadow_reg = 1e-2 * torch.mean((1 - outputs['shadow']) ** 2)
 
         loss_dict = {"rgb_loss_coarse": rgb_loss_coarse, "rgb_loss_fine": rgb_loss_fine,
                      "shadow_reg": shadow_reg}
