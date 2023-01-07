@@ -32,6 +32,7 @@ from torchtyping import TensorType
 from typing_extensions import Literal
 
 from nerfstudio.cameras.rays import RayBundle
+from nerfstudio.data.scene_box import SceneBox
 from nerfstudio.field_components.encodings import NeRFEncoding
 from nerfstudio.field_components.field_heads import FieldHeadNames
 from nerfstudio.field_components.spatial_distortions import SceneContraction
@@ -129,6 +130,17 @@ class SurfaceModel(Model):
 
     config: SurfaceModelConfig
 
+    def __init__(self, config: ModelConfig, scene_box: SceneBox, num_train_data: int, **kwargs):
+        super().__init__(config, scene_box, num_train_data, **kwargs)
+
+        self.position_encoding = NeRFEncoding(
+            in_dim=3, num_frequencies=6, min_freq_exp=0.0, max_freq_exp=5.0, include_input=False
+        )
+
+        self.direction_encoding = NeRFEncoding(
+            in_dim=3, num_frequencies=4, min_freq_exp=0.0, max_freq_exp=3.0, include_input=True
+        )
+
     def populate_modules(self):
         """Set the fields and modules."""
         super().populate_modules()
@@ -141,6 +153,8 @@ class SurfaceModel(Model):
             aabb=self.scene_box.aabb,
             spatial_distortion=self.scene_contraction,
             num_images=self.num_train_data,
+            position_encoding=self.position_encoding,
+            direction_encoding=self.direction_encoding,
             use_average_appearance_embedding=self.config.use_average_appearance_embedding,
         )
 

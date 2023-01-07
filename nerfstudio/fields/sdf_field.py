@@ -30,7 +30,8 @@ from typing_extensions import Literal
 from nerfstudio.cameras.rays import RaySamples
 from nerfstudio.field_components.embedding import Embedding
 from nerfstudio.field_components.encodings import (
-    NeRFEncoding,
+    Encoding,
+    Identity,
     PeriodicVolumeEncoding,
     TensorVMEncoding,
 )
@@ -167,6 +168,8 @@ class SDFField(Field):
         config: SDFFieldConfig,
         aabb,
         num_images: int,
+        position_encoding: Encoding = Identity(in_dim=3),
+        direction_encoding: Encoding = Identity(in_dim=3),
         use_average_appearance_embedding: bool = False,
         spatial_distortion: Optional[SpatialDistortion] = None,
     ) -> None:
@@ -221,15 +224,9 @@ class SDFField(Field):
             print("using tensor vm")
             self.encoding = TensorVMEncoding(128, 24, smoothstep=smoothstep)
 
-        # TODO make this configurable
         # we concat inputs position ourselves
-        self.position_encoding = NeRFEncoding(
-            in_dim=3, num_frequencies=6, min_freq_exp=0.0, max_freq_exp=5.0, include_input=False
-        )
-
-        self.direction_encoding = NeRFEncoding(
-            in_dim=3, num_frequencies=4, min_freq_exp=0.0, max_freq_exp=3.0, include_input=True
-        )
+        self.position_encoding = position_encoding
+        self.direction_encoding = direction_encoding
 
         # TODO move it to field components
         # MLP with geometric initialization
