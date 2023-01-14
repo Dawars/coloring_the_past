@@ -28,7 +28,6 @@ from typing_extensions import Literal
 
 from nerfstudio.cameras import camera_utils
 from nerfstudio.cameras.cameras import Cameras, CameraType
-from nerfstudio.data.dataparsers import sdfstudio_dataparser
 from nerfstudio.data.dataparsers.base_dataparser import (
     DataParser,
     DataParserConfig,
@@ -67,6 +66,25 @@ def get_masks(image_idx: int, masks, fg_masks, sparse_pts):
     pts = BasicImages([pts])
 
     return {"mask": mask, "fg_mask": fg_mask, "sparse_pts": pts}
+
+
+def get_depths_and_normals(image_idx: int, depths, normals):
+    """function to process additional depths and normal information
+
+    Args:
+        image_idx: specific image index to work with
+        semantics: semantics data
+    """
+
+    # depth
+    depth = depths[image_idx]
+    depth = BasicImages([depth])
+
+    # normal
+    normal = normals[image_idx]
+    normal = BasicImages([normal])
+
+    return {"depth": depth, "normal": normal}
 
 
 @dataclass
@@ -186,16 +204,16 @@ class Heritage(DataParser):
 
                 # transform normal to world coordinate system
                 normal = normal * 2.0 - 1.0  # omnidata output is normalized so we convert it back to normal here
-                normal = torch.from_numpy(normal)#.float()
+                normal = torch.from_numpy(normal).float()
 
                 # turn to global?
-                rot = pose[:3, :3]
+                rot = pose[:3, :3].float()
 
                 normal_map = normal.reshape(3, -1)
                 normal_map = torch.nn.functional.normalize(normal_map, p=2, dim=0)
 
                 normal_map = rot @ normal_map
-                normal_map = normal_map.float()
+                normal_map = normal_map
                 normal_map = normal_map.permute(1, 0).reshape(*normal.shape[1:], 3)
                 normal_images.append(normal_map)
             # load mask
@@ -388,11 +406,14 @@ class Heritage(DataParser):
 
         assert len(cameras) == len(image_filenames)
         additional_inputs_dict = {
-            "masks": {"func": get_masks, "kwargs": {"masks": masks, "fg_masks": fg_masks, "sparse_pts": sparse_pts}}
+            "masks": {
+                "func": get_masks,
+                "kwargs": {"masks": masks, "fg_masks": fg_masks, "sparse_pts": sparse_pts}
+            }
         }
         if self.config.include_mono_prior:
             additional_inputs_dict["cues"] = {
-                "func": sdfstudio_dataparser.get_depths_and_normals,
+                "func": get_depths_and_normals,
                 "kwargs": {"depths": depth_images, "normals": normal_images}
             }
 
