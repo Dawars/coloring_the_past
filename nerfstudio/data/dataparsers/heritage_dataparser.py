@@ -28,6 +28,7 @@ from typing_extensions import Literal
 
 from nerfstudio.cameras import camera_utils
 from nerfstudio.cameras.cameras import Cameras, CameraType
+from nerfstudio.data.dataparsers import sdfstudio_dataparser
 from nerfstudio.data.dataparsers.base_dataparser import (
     DataParser,
     DataParserConfig,
@@ -76,6 +77,8 @@ class HeritageDataParserConfig(DataParserConfig):
     """target class to instantiate"""
     data: Path = Path("data/phototourism/trevi-fountain")
     """Directory specifying location of data."""
+    include_mono_prior: bool = False
+    """whether or not to load monocular depth and normal """
     scale_factor: float = 3.0
     """How much to scale the camera origins by."""
     alpha_color: str = "white"
@@ -124,6 +127,8 @@ class Heritage(DataParser):
 
         image_filenames = []
         poses = []
+        depth_images = []
+        normal_images = []
 
         with CONSOLE.status(f"[bold green]Reading phototourism images and poses for {split} split...") as _:
             cams = read_cameras_binary(self.data / "dense/sparse/cameras.bin")
@@ -170,6 +175,29 @@ class Heritage(DataParser):
             mask_filenames.append(self.data / "masks" / img.name.replace(".jpg", ".npy"))
             semantic_filenames.append(self.data / "semantic_maps" / img.name.replace(".jpg", ".npz"))
 
+            if self.config.include_mono_prior:
+                # assert meta["has_mono_prior"]
+                # load mono depth
+                depth = np.load(self.config.data / "normal" / img.name.replace(".jpg", ".npy"))
+                depth_images.append(torch.from_numpy(depth).float())
+
+                # load mono normal
+                normal = np.load(self.config.data / "normal" / img.name.replace(".jpg", ".npy"))
+
+                # transform normal to world coordinate system
+                normal = normal * 2.0 - 1.0  # omnidata output is normalized so we convert it back to normal here
+                normal = torch.from_numpy(normal)#.float()
+
+                # turn to global?
+                rot = pose[:3, :3]
+
+                normal_map = normal.reshape(3, -1)
+                normal_map = torch.nn.functional.normalize(normal_map, p=2, dim=0)
+
+                normal_map = rot @ normal_map
+                normal_map = normal_map.float()
+                normal_map = normal_map.permute(1, 0).reshape(*normal.shape[1:], 3)
+                normal_images.append(normal_map)
             # load mask
             mask = np.load(mask_filenames[-1])  # ["arr_0"]
 
@@ -359,14 +387,20 @@ class Heritage(DataParser):
         sparse_pts = [sparse_pts[i] for i in indices]
 
         assert len(cameras) == len(image_filenames)
+        additional_inputs_dict = {
+            "masks": {"func": get_masks, "kwargs": {"masks": masks, "fg_masks": fg_masks, "sparse_pts": sparse_pts}}
+        }
+        if self.config.include_mono_prior:
+            additional_inputs_dict["cues"] = {
+                "func": sdfstudio_dataparser.get_depths_and_normals,
+                "kwargs": {"depths": depth_images, "normals": normal_images}
+            }
 
         dataparser_outputs = DataparserOutputs(
             image_filenames=image_filenames,
             cameras=cameras,
             scene_box=scene_box,
-            additional_inputs={
-                "masks": {"func": get_masks, "kwargs": {"masks": masks, "fg_masks": fg_masks, "sparse_pts": sparse_pts}}
-            },
+            additional_inputs=additional_inputs_dict
         )
 
         return dataparser_outputs
