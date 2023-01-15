@@ -17,6 +17,7 @@ Code for sampling pixels.
 """
 
 import random
+from collections import defaultdict
 from typing import Dict
 
 import torch
@@ -72,6 +73,9 @@ def collate_image_dataset_batch(batch: Dict, num_rays_per_batch: int, keep_full_
     return collated_batch
 
 
+image_keys = ['image', 'fg_mask', 'normal', 'depth']
+
+
 def collate_image_dataset_batch_list(batch: Dict, num_rays_per_batch: int, keep_full_image: bool = False):
     """
     Does the same as collate_image_dataset_batch, except it will operate over a list of images / masks inside
@@ -92,10 +96,8 @@ def collate_image_dataset_batch_list(batch: Dict, num_rays_per_batch: int, keep_
 
     # only sample within the mask, if the mask is in the batch
     all_indices = []
-    all_images = []
-    all_normals = []
-    all_depths = []
-    all_fg_masks = []
+
+    all_image_fields = defaultdict(list)
 
     if "mask" in batch:
         num_rays_in_batch = num_rays_per_batch // num_images
@@ -109,14 +111,10 @@ def collate_image_dataset_batch_list(batch: Dict, num_rays_per_batch: int, keep_
             indices = nonzero_indices[chosen_indices]
             indices = torch.cat([torch.full((num_rays_in_batch, 1), i, device=device), indices], dim=-1)
             all_indices.append(indices)
-            all_images.append(batch["image"][i][indices[:, 1], indices[:, 2]])
-            if "fg_mask" in batch:
-                all_fg_masks.append(batch["fg_mask"][i][indices[:, 1], indices[:, 2]])
-            if "normal" in batch:
-                all_normals.append(batch["normal"][i][indices[:, 1], indices[:, 2]])
-            if "depth" in batch:
-                all_depths.append(batch["depth"][i][indices[:, 1], indices[:, 2]])
 
+            for key in image_keys:
+                if key in batch:
+                    all_image_fields[key].append(batch[key][i][indices[:, 1], indices[:, 2]])
     else:
         num_rays_in_batch = num_rays_per_batch // num_images
         for i in range(num_images):
@@ -129,18 +127,14 @@ def collate_image_dataset_batch_list(batch: Dict, num_rays_per_batch: int, keep_
             ).long()
             indices[:, 0] = i
             all_indices.append(indices)
-            all_images.append(batch["image"][i][indices[:, 1], indices[:, 2]])
-            if "fg_mask" in batch:
-                all_fg_masks.append(batch["fg_mask"][i][indices[:, 1], indices[:, 2]])
-            if "normal" in batch:
-                all_normals.append(batch["normal"][i][indices[:, 1], indices[:, 2]])
-            if "depth" in batch:
-                all_depths.append(batch["depth"][i][indices[:, 1], indices[:, 2]])
+
+            for key in image_keys:
+                if key in batch:
+                    all_image_fields[key].append(batch[key][i][indices[:, 1], indices[:, 2]])
 
     indices = torch.cat(all_indices, dim=0)
 
-    excluded_keys = ["image_idx", "image", "mask", "fg_mask", "sparse_pts",
-                     "depth", "normal"]  # not collated
+    excluded_keys = image_keys + ["image_idx", "mask", "sparse_pts", ]  # not collated
 
     c, y, x = (i.flatten() for i in torch.split(indices, 1, dim=-1))
     collated_batch = {
@@ -149,16 +143,9 @@ def collate_image_dataset_batch_list(batch: Dict, num_rays_per_batch: int, keep_
         if key not in excluded_keys
         and value is not None
     }
-
-    collated_batch["image"] = torch.cat(all_images, dim=0)
-    if len(all_fg_masks) > 0:
-        collated_batch["fg_mask"] = torch.cat(all_fg_masks, dim=0)
-
-    if len(all_normals) > 0:
-        collated_batch["normal"] = torch.cat(all_normals, dim=0)
-
-    if len(all_depths) > 0:
-        collated_batch["depth"] = torch.cat(all_depths, dim=0)
+    for key in image_keys:
+        if len(all_image_fields[key]) > 0:
+            collated_batch[key] = torch.cat(all_image_fields[key], dim=0)
 
     if "sparse_pts" in batch:
         rand_idx = random.randint(0, num_images - 1)
@@ -212,9 +199,10 @@ class PixelSampler:  # pylint: disable=too-few-public-methods
             image_batch["image"] = image_batch["image"].images
             if "mask" in image_batch:
                 image_batch["mask"] = image_batch["mask"].images
-            # TODO clean up
-            if "fg_mask" in image_batch:
-                image_batch["fg_mask"] = image_batch["fg_mask"].images
+
+            for key in image_keys:
+                image_batch[key] = image_batch[key].images
+
             if "sparse_pts" in image_batch:
                 image_batch["sparse_pts"] = image_batch["sparse_pts"].images
             pixel_batch = collate_image_dataset_batch_list(
