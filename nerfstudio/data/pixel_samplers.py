@@ -200,7 +200,8 @@ class PixelSampler:  # pylint: disable=too-few-public-methods
                 image_batch["mask"] = image_batch["mask"].images
 
             for key in image_keys:
-                image_batch[key] = image_batch[key].images
+                if key in image_batch:
+                    image_batch[key] = image_batch[key].images
 
             if "sparse_pts" in image_batch:
                 image_batch["sparse_pts"] = image_batch["sparse_pts"].images
