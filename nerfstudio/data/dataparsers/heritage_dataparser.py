@@ -22,6 +22,7 @@ from typing import Type
 
 import numpy as np
 import torch
+import pandas as pd
 import yaml
 from rich.progress import Console, track
 from typing_extensions import Literal
@@ -153,6 +154,14 @@ class Heritage(DataParser):
             imgs = read_images_binary(self.data / "dense/sparse/images.bin")
             pts3d = read_points3d_binary(self.data / "dense/sparse/points3D.bin")
 
+        self.files = pd.read_csv(next(self.data.glob("*.tsv")), sep="\t")
+        # we accept all images
+        self.files.reset_index(inplace=True, drop=True)
+
+        img_path_to_id = {}
+        for v in imgs.values():
+            img_path_to_id[v.name] = v.id
+
         # key point depth
         pts3d_array = torch.ones(max(pts3d.keys()) + 1, 4)
         error_array = torch.ones(max(pts3d.keys()) + 1, 1)
@@ -176,8 +185,13 @@ class Heritage(DataParser):
         flip[0, 0] = -1.0
         flip = flip.double()
 
-        for _id, cam in cams.items():
+        for filename in list(self.files["filename"]):
+            if filename not in img_path_to_id.keys():
+                print(f"image {filename} not found in sfm result!!")
+                continue
+            _id = img_path_to_id[filename]
             img = imgs[_id]
+            cam = cams[img.camera_id]
 
             assert cam.model == "PINHOLE", "Only pinhole (perspective) camera model is supported at the moment"
 
