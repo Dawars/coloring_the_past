@@ -22,6 +22,7 @@ from typing import Type
 
 import numpy as np
 import torch
+import pandas as pd
 import yaml
 from rich.progress import Console, track
 from typing_extensions import Literal
@@ -122,13 +123,28 @@ class Heritage(DataParser):
         bbx_min = np.minimum(sfm_vert1, sfm_vert2)
         bbx_max = np.maximum(sfm_vert1, sfm_vert2)
 
-        image_filenames = []
-        poses = []
-
         with CONSOLE.status(f"[bold green]Reading phototourism images and poses for {split} split...") as _:
             cams = read_cameras_binary(self.data / "dense/sparse/cameras.bin")
             imgs = read_images_binary(self.data / "dense/sparse/images.bin")
             pts3d = read_points3d_binary(self.data / "dense/sparse/points3D.bin")
+
+        img_path_to_id = {}
+        file_list = []
+        image_list = list(self.data.glob("*.tsv"))
+        if image_list:
+            CONSOLE.status(f"Found .tsv file for image list {image_list[0]}")
+            self.files = pd.read_csv(image_list[0], sep="\t")
+            # we accept all images
+            self.files.reset_index(inplace=True, drop=True)
+            file_list = list(self.files["filename"])
+            for v in imgs.values():
+                img_path_to_id[v.name] = v.id
+        else:
+            for _id, cam in cams.items():
+                img = imgs[_id]
+                img_path_to_id[img.name] = img.id
+                file_list.append(img.name)
+
 
         # key point depth
         pts3d_array = torch.ones(max(pts3d.keys()) + 1, 4)
@@ -154,8 +170,13 @@ class Heritage(DataParser):
         flip[0, 0] = -1.0
         flip = flip.double()
 
-        for _id, cam in cams.items():
+        for filename in file_list:
+            if filename not in img_path_to_id.keys():
+                print(f"image {filename} not found in sfm result!!")
+                continue
+            _id = img_path_to_id[filename]
             img = imgs[_id]
+            cam = cams[img.camera_id]
 
             assert cam.model == "PINHOLE", "Only pinhole (perspective) camera model is supported at the moment"
 
