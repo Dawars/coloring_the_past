@@ -81,7 +81,7 @@ Navigating to the link at the end of the terminal will load the webviewer (devel
 It is also possible to load a pretrained model by running
 
 ```bash
-ns-train neus-facto sdfstudio-data --data data/sdfstudio-demo-data/dtu-scan65 --trainer.load-dir {outputs/neus-facto-dtu65/neus-facto/XXX/sdfstudio_models}
+ns-train neus-facto sdfstudio-data --data data/sdfstudio-demo-data/dtu-scan65 --load-dir {outputs/neus-facto-dtu65/neus-facto/XXX/sdfstudio_models}
 ```
 
 Note that this will automatically resume training. If you do not want to resume training, add `--viewer.start-train False` to your training command.
@@ -108,7 +108,7 @@ https://user-images.githubusercontent.com/13434986/207892086-dd6cae89-7271-4904-
 
 ### Render Video
 
-First we must create a path for the camera to follow. This can be done in the viewer under the "RENDER" tab. Orient your 3D view to the location where you wish the video to start, then press "ADD CAMERA". This will set the first camera key frame. Continue to new viewpoints adding additional cameras to create the camera path. We provide other parameters to further refine your camera path. Once satisfied, press "RENDER" which will display a modal that contains the command needed to render the video. Kill the training job (or create a new terminal if you have lots of compute) and the command to generate the video.
+First we must create a path for the camera to follow. This can be done in the viewer under the "RENDER" tab. Orient your 3D view to the location where you wish the video to start, then press "ADD CAMERA". This will set the first camera key frame. Continue to new viewpoints adding additional cameras to create the camera path. We provide other parameters to further refine your camera path. Once satisfied, press "RENDER" which will display a modal that contains the command needed to render the video. Kill the training job (or create a new terminal if you have lots of compute) and run the command to generate the video.
 
 To view all video export options run:
 
@@ -167,6 +167,12 @@ Please refer to the [datasets](docs/sdfstudio-data.md) and [data format](https:/
 - A collaboration friendly studio for NeRFs
 - Developed by [nerfstudio team](https://github.com/nerfstudio-project)
 
+# Contributors
+
+<a href="https://github.com/nerfstudio-project/nerfstudio/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=nerfstudio-project/nerfstudio" />
+</a>
+
 <a href="https://github.com/brentyi/tyro">
 <!-- pypi-strip -->
 <picture>
@@ -198,6 +204,7 @@ Please refer to the [datasets](docs/sdfstudio-data.md) and [data format](https:/
 # Citation
 
 If you use this library or find the documentation useful for your research, please consider citing:
+
 
 ```bibtex
 @misc{Yu2022SDFStudio,
