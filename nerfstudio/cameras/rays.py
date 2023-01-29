@@ -148,6 +148,7 @@ class RaySamples(TensorDataclass):
         transmittance = torch.exp(-transmittance)  # [..., "num_samples"]
 
         weights = alphas * transmittance  # [..., "num_samples"]
+        weights = torch.nan_to_num(weights)
 
         return weights
 
@@ -226,8 +227,6 @@ class RayBundle(TensorDataclass):
     """Unit ray direction vector"""
     pixel_area: TensorType[..., 1]
     """Projected area of pixel a distance 1 away from origin"""
-    directions_norm: Optional[TensorType[..., 1]] = None
-    """Norm of ray direction vector before normalization"""
     camera_indices: Optional[TensorType[..., 1]] = None
     """Camera indices"""
     nears: Optional[TensorType[..., 1]] = None
@@ -265,7 +264,7 @@ class RayBundle(TensorDataclass):
         return self[indices]
 
     def get_row_major_sliced_ray_bundle(self, start_idx: int, end_idx: int) -> "RayBundle":
-        """Flattens RayBundle and extracts chunk given start and end indicies.
+        """Flattens RayBundle and extracts chunk given start and end indices.
 
         Args:
             start_idx: Start index of RayBundle chunk.

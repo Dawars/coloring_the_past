@@ -18,7 +18,8 @@ Dataset.
 from __future__ import annotations
 
 from copy import deepcopy
-from typing import Dict
+from pathlib import Path
+from typing import Dict, List
 
 import numpy as np
 import numpy.typing as npt
@@ -67,10 +68,9 @@ class InputDataset(Dataset):
             width, height = pil_image.size
             newsize = (int(width * self.scale_factor), int(height * self.scale_factor))
             pil_image = pil_image.resize(newsize, resample=Image.BILINEAR)
-        image = np.array(pil_image, dtype="uint8")  # shape is (h, w, 3 or 4)
-        # mask_filename = str(image_filename).replace("dense/images", "masks").replace(".jpg", ".npy")
-        # mask = np.load(mask_filename)
-        # image = image * mask[..., None]
+        image = np.array(pil_image, dtype="uint8")  # shape is (h, w) or (h, w, 3 or 4)
+        if len(image.shape) == 2:
+            image = image[:, :, None].repeat(3, axis=2)
 
         assert len(image.shape) == 3
         assert image.dtype == np.uint8
@@ -113,6 +113,9 @@ class InputDataset(Dataset):
         if self.has_masks:
             mask_filepath = self._dataparser_outputs.mask_filenames[image_idx]
             data["mask"] = get_image_mask_tensor_from_path(filepath=mask_filepath, scale_factor=self.scale_factor)
+            assert (
+                data["mask"].shape[:2] == data["image"].shape[:2]
+            ), f"Mask and image have different shapes. Got {data['mask'].shape[:2]} and {data['image'].shape[:2]}"
         metadata = self.get_metadata(data)
         data.update(metadata)
         return data
@@ -131,61 +134,11 @@ class InputDataset(Dataset):
         data = self.get_data(image_idx)
         return data
 
-
-class GeneralizedDataset(InputDataset):
-    """Dataset that returns images, possibly of different sizes.
-
-    The only thing that separates this from the inputdataset is that this will return
-    image / mask tensors inside a list, meaning when collate receives the images, it will
-    simply concatenate the lists together. The concatenation of images of different sizes would
-    fail otherwise.
-
-    Args:
-        dataparser_outputs: description of where and how to read input images.
-    """
-
-    def __init__(self, dataparser_outputs: DataparserOutputs, scale_factor: float = 1.0):
-        super().__init__(dataparser_outputs, scale_factor)
-
-        h = None
-        w = None
-        all_hw_same = True
-        for filename in track(
-            self._dataparser_outputs.image_filenames, transient=True, description="Checking image sizes"
-        ):
-            image = Image.open(filename)
-            if h is None:
-                h = image.height
-                w = image.width
-
-            if image.height != h or image.width != w:
-                all_hw_same = False
-                break
-
-        self.all_hw_same = all_hw_same
-
-    def get_data(self, image_idx: int) -> Dict:
-        """Returns the ImageDataset data as a dictionary.
-
-        Args:
-            image_idx: The image index in the dataset.
+    @property
+    def image_filenames(self) -> List[Path]:
         """
-        # If all images are the same size, we can just return the image and mask tensors in a regular way
-        if self.all_hw_same:
-            return super().get_data(image_idx)
+        Returns image filenames for this dataset.
+        The order of filenames is the same as in the Cameras object for easy mapping.
+        """
 
-        # Otherwise return them in a custom struct
-        image = self.get_image(image_idx)
-        data = {"image_idx": image_idx}
-        data["image"] = BasicImages([image])
-        for _, data_func_dict in self._dataparser_outputs.additional_inputs.items():
-            assert "func" in data_func_dict, "Missing function to process data: specify `func` in `additional_inputs`"
-            func = data_func_dict["func"]
-            assert "kwargs" in data_func_dict, "No data to process: specify `kwargs` in `additional_inputs`"
-            data.update(func(image_idx, **data_func_dict["kwargs"]))
-        if self.has_masks:
-            mask_filepath = self._dataparser_outputs.mask_filenames[image_idx]
-            data["mask"] = BasicImages([get_image_mask_tensor_from_path(filepath=mask_filepath)])
-        metadata = self.get_metadata(data)
-        data.update(metadata)
-        return data
+        return self._dataparser_outputs.image_filenames

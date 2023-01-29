@@ -81,7 +81,7 @@ Navigating to the link at the end of the terminal will load the webviewer (devel
 It is also possible to load a pretrained model by running
 
 ```bash
-ns-train neus-facto sdfstudio-data --data data/sdfstudio-demo-data/dtu-scan65 --trainer.load-dir {outputs/neus-facto-dtu65/neus-facto/XXX/sdfstudio_models}
+ns-train neus-facto sdfstudio-data --data data/sdfstudio-demo-data/dtu-scan65 --load-dir {outputs/neus-facto-dtu65/neus-facto/XXX/sdfstudio_models}
 ```
 
 Note that this will automatically resume training. If you do not want to resume training, add `--viewer.start-train False` to your training command.

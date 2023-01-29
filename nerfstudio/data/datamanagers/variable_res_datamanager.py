@@ -63,4 +63,9 @@ class VariableResDataManagerConfig(VanillaDataManagerConfig):
     eval_num_images_to_sample_from: int = 40
     """Number of images to sample during eval iteration."""
     eval_num_times_to_repeat_images: int = 100
+
+    camera_res_scale_factor: float = 1.0
+    """The scale factor for scaling spatial data such as images, mask, semantics
+    along with relevant information about camera intrinsics
+    """
     collate_fn = staticmethod(variable_res_collate)

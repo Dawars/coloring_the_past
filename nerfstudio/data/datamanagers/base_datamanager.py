@@ -35,18 +35,21 @@ from nerfstudio.cameras.camera_optimizers import CameraOptimizerConfig
 from nerfstudio.cameras.cameras import CameraType
 from nerfstudio.cameras.rays import RayBundle
 from nerfstudio.configs.base_config import InstantiateConfig
+from nerfstudio.data.dataparsers.base_dataparser import DataparserOutputs
 from nerfstudio.data.dataparsers.blender_dataparser import BlenderDataParserConfig
 from nerfstudio.data.dataparsers.dnerf_dataparser import DNeRFDataParserConfig
+from nerfstudio.data.dataparsers.dycheck_dataparser import DycheckDataParserConfig
 from nerfstudio.data.dataparsers.friends_dataparser import FriendsDataParserConfig
 from nerfstudio.data.dataparsers.instant_ngp_dataparser import InstantNGPDataParserConfig
+from nerfstudio.data.dataparsers.minimal_dataparser import MinimalDataParserConfig
 from nerfstudio.data.dataparsers.nerfstudio_dataparser import NerfstudioDataParserConfig
 from nerfstudio.data.dataparsers.nuscenes_dataparser import NuScenesDataParserConfig
+from nerfstudio.data.datasets.base_dataset import InputDataset
 from nerfstudio.data.dataparsers.phototourism_dataparser import PhototourismDataParserConfig
 from nerfstudio.data.dataparsers.heritage_dataparser import HeritageDataParserConfig
-from nerfstudio.data.dataparsers.record3d_dataparser import Record3DDataParserConfig
 from nerfstudio.data.dataparsers.sdfstudio_dataparser import SDFStudioDataParserConfig
 from nerfstudio.data.dataparsers.monosdf_dataparser import MonoSDFDataParserConfig
-from nerfstudio.data.datasets.base_dataset import InputDataset, GeneralizedDataset
+from nerfstudio.data.datasets.generalized_dataset import GeneralizedDataset
 from nerfstudio.data.pixel_samplers import EquirectangularPixelSampler, PixelSampler
 from nerfstudio.data.utils.dataloaders import (
     CacheDataloader,
@@ -65,13 +68,14 @@ AnnotatedDataParserUnion = tyro.conf.OmitSubcommandPrefixes[  # Omit prefixes of
     tyro.extras.subcommand_type_from_defaults(
         {
             "nerfstudio-data": NerfstudioDataParserConfig(),
+            "minimal-parser": MinimalDataParserConfig(),
             "blender-data": BlenderDataParserConfig(),
             "friends-data": FriendsDataParserConfig(),
             "instant-ngp-data": InstantNGPDataParserConfig(),
             "nuscenes-data": NuScenesDataParserConfig(),
-            "record3d-data": Record3DDataParserConfig(),
             "dnerf-data": DNeRFDataParserConfig(),
             "phototourism-data": PhototourismDataParserConfig(),
+            "dycheck-data": DycheckDataParserConfig(),
             "monosdf-data": MonoSDFDataParserConfig(),
             "sdfstudio-data": SDFStudioDataParserConfig(),
             "heritage-data": HeritageDataParserConfig(),
@@ -96,7 +100,7 @@ class DataManager(nn.Module):
     This data manager's next_train and next_eval methods will return 2 things:
         1. A Raybundle: This will contain the rays we are sampling, with latents and
             conditionals attached (everything needed at inference)
-        2. A "batch" of auxilury information: This will contain the mask, the ground truth
+        2. A "batch" of auxiliary information: This will contain the mask, the ground truth
             pixels, etc needed to actually train, score, etc the model
 
     Rationale:
@@ -174,7 +178,7 @@ class DataManager(nn.Module):
 
     def get_train_iterable(self, length=-1) -> IterableWrapper:
         """Gets a trivial pythonic iterator that will use the iter_train and next_train functions
-        as __iter__ and __next__ methods respectivley.
+        as __iter__ and __next__ methods respectively.
 
         This basically is just a little utility if you want to do something like:
         |    for ray_bundle, batch in datamanager.get_train_iterable():
@@ -186,7 +190,7 @@ class DataManager(nn.Module):
 
     def get_eval_iterable(self, length=-1) -> IterableWrapper:
         """Gets a trivial pythonic iterator that will use the iter_eval and next_eval functions
-        as __iter__ and __next__ methods respectivley.
+        as __iter__ and __next__ methods respectively.
 
         This basically is just a little utility if you want to do something like:
         |    for ray_bundle, batch in datamanager.get_eval_iterable():
@@ -299,6 +303,9 @@ class VanillaDataManager(DataManager):  # pylint: disable=abstract-method
     config: VanillaDataManagerConfig
     train_dataset: InputDataset
     eval_dataset: InputDataset
+    train_dataparser_outputs: DataparserOutputs
+    train_pixel_sampler: Optional[PixelSampler] = None
+    eval_pixel_sampler: Optional[PixelSampler] = None
 
     def __init__(
         self,
@@ -317,6 +324,7 @@ class VanillaDataManager(DataManager):  # pylint: disable=abstract-method
         self.test_mode = test_mode
         self.test_split = "test" if test_mode in ["test", "inference"] else "val"
         self.dataparser = self.config.dataparser.setup()
+        self.train_dataparser_outputs = self.dataparser.get_dataparser_outputs(split="train")
 
         self.train_dataset = self.create_train_dataset()
         self.eval_dataset = self.create_eval_dataset()
@@ -325,7 +333,7 @@ class VanillaDataManager(DataManager):  # pylint: disable=abstract-method
     def create_train_dataset(self) -> InputDataset:
         """Sets up the data loaders for training"""
         return GeneralizedDataset(
-            dataparser_outputs=self.dataparser.get_dataparser_outputs(split="train"),
+            dataparser_outputs=self.train_dataparser_outputs,
             scale_factor=self.config.camera_res_scale_factor,
         )
 
@@ -410,6 +418,7 @@ class VanillaDataManager(DataManager):  # pylint: disable=abstract-method
         """Returns the next batch of data from the train dataloader."""
         self.train_count += 1
         image_batch = next(self.iter_train_image_dataloader)
+        assert self.train_pixel_sampler is not None
         batch = self.train_pixel_sampler.sample(image_batch)
         ray_indices = batch["indices"]
         ray_bundle = self.train_ray_generator(ray_indices)
@@ -419,6 +428,7 @@ class VanillaDataManager(DataManager):  # pylint: disable=abstract-method
         """Returns the next batch of data from the eval dataloader."""
         self.eval_count += 1
         image_batch = next(self.iter_eval_image_dataloader)
+        assert self.eval_pixel_sampler is not None
         batch = self.eval_pixel_sampler.sample(image_batch)
         ray_indices = batch["indices"]
         ray_bundle = self.eval_ray_generator(ray_indices)
@@ -430,6 +440,9 @@ class VanillaDataManager(DataManager):  # pylint: disable=abstract-method
             if isinstance(batch["image"], BasicImages):  # If this is a generalized dataset, we need to get image tensor
                 batch["image"] = batch["image"].images[0]
                 camera_ray_bundle = camera_ray_bundle.reshape((*batch["image"].shape[:-1], 1))
+            for key, value in batch.items():
+                if isinstance(value, BasicImages):  # If this is a generalized dataset, we need to get image tensor
+                    batch[key] = batch[key].images[0]
             image_idx = int(camera_ray_bundle.camera_indices[0, 0, 0])
             return image_idx, camera_ray_bundle, batch
         raise ValueError("No more eval images")

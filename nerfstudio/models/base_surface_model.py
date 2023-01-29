@@ -249,7 +249,7 @@ class SurfaceModel(Model):
         rgb = self.renderer_rgb(rgb=field_outputs[FieldHeadNames.RGB], weights=weights)
         depth = self.renderer_depth(weights=weights, ray_samples=ray_samples)
         # the rendered depth is point-to-point distance and we should convert to depth
-        depth = depth / ray_bundle.directions_norm
+        depth = depth / ray_bundle.metadata["directions_norm"]  # todo normals
 
         # remove the rays that don't intersect with the surface
         # hit = (field_outputs[FieldHeadNames.SDF] > 0.0).any(dim=1) & (field_outputs[FieldHeadNames.SDF] < 0).any(dim=1)
@@ -292,7 +292,7 @@ class SurfaceModel(Model):
             "depth": depth,
             "normal": normal,
             "weights": weights,
-            "directions_norm": ray_bundle.directions_norm,  # used to scale z_vals for free space and sdf loss
+            "directions_norm": ray_bundle.metadata["directions_norm"],  # used to scale z_vals for free space and sdf loss  # todo what is this??
         }
         outputs.update(bg_outputs)
 
@@ -361,7 +361,7 @@ class SurfaceModel(Model):
             loss_dict["eikonal_loss"] = ((grad_theta.norm(2, dim=-1) - 1) ** 2).mean() * self.config.eikonal_loss_mult
 
             # foreground mask loss
-            if "fg_mask" in batch and self.config.fg_mask_loss_mult > 0.0:
+            if "fg_mask" in batch and self.config.fg_mask_loss_mult > 0.0:  # todo fg_mask
                 fg_label = batch["fg_mask"].float().to(self.device)
                 weights_sum = outputs["weights"].sum(dim=1).clip(1e-3, 1.0 - 1e-3)
                 loss_dict["fg_mask_loss"] = (
@@ -369,21 +369,21 @@ class SurfaceModel(Model):
                 )
 
             # monocular normal loss
-            if "normal" in batch and self.config.mono_normal_loss_mult > 0.0:
-                normal_gt = batch["normal"].to(self.device)
+            if "normal_image" in batch and self.config.mono_normal_loss_mult > 0.0:
+                normal_gt = batch["normal_image"].to(self.device)
                 normal_pred = outputs["normal"]
                 loss_dict["normal_loss"] = (
                     monosdf_normal_loss(normal_pred, normal_gt) * self.config.mono_normal_loss_mult
                 )
 
             # monocular depth loss
-            if "depth" in batch and self.config.mono_depth_loss_mult > 0.0:
+            if "depth_image" in batch and self.config.mono_depth_loss_mult > 0.0:
                 # TODO check it's true that's we sample from only a single image
                 # TODO only supervised pixel that hit the surface and remove hard-coded scaling for depth
-                depth_gt = batch["depth"].to(self.device)[..., None]
+                depth_gt = batch["depth_image"].to(self.device)[..., None]
                 depth_pred = outputs["depth"]
 
-                mask = torch.ones_like(depth_gt).reshape(1, 32, -1).bool()
+                mask = torch.ones_like(depth_gt).reshape(1, 32, -1).bool()  # todo what is this depth mask??
                 loss_dict["depth_loss"] = (
                     self.depth_loss(depth_pred.reshape(1, 32, -1), (depth_gt * 50 + 0.5).reshape(1, 32, -1), mask)
                     * self.config.mono_depth_loss_mult
@@ -446,17 +446,17 @@ class SurfaceModel(Model):
 
         combined_rgb = torch.cat([image, rgb], dim=1)
         combined_acc = torch.cat([acc], dim=1)
-        if "depth" in batch:
-            depth_gt = batch["depth"].to(self.device)
+        if "depth_image" in batch:
+            depth_gt = batch["depth_image"].to(self.device)
             depth_pred = outputs["depth"]
 
             # align to predicted depth and normalize
-            scale, shift = compute_scale_and_shift(
-                depth_pred[None, ..., 0], depth_gt[None, ...], depth_gt[None, ...] > 0.0
+            scale, shift = compute_scale_and_shift(  # todo check 1st or last axis for 1 dim
+                depth_pred[None], depth_gt[None, ...], depth_gt[None, ...] > 0.0
             )
             depth_pred = depth_pred * scale + shift
 
-            combined_depth = torch.cat([depth_gt[..., None], depth_pred], dim=1)
+            combined_depth = torch.cat([depth_gt, depth_pred], dim=1)
             combined_depth = colormaps.apply_depth_colormap(combined_depth)
         else:
             depth = colormaps.apply_depth_colormap(
@@ -465,8 +465,8 @@ class SurfaceModel(Model):
             )
             combined_depth = torch.cat([depth], dim=1)
 
-        if "normal" in batch:
-            normal_gt = (batch["normal"].to(self.device) + 1.0) / 2.0
+        if "normal_image" in batch:
+            normal_gt = (batch["normal_image"].to(self.device) + 1.0) / 2.0
             combined_normal = torch.cat([normal_gt, normal], dim=1)
         else:
             combined_normal = torch.cat([normal], dim=1)

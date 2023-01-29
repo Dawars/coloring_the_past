@@ -358,8 +358,6 @@ class SDFStudio(DataParser):
             image_filenames=image_filenames,
             cameras=cameras,
             scene_box=scene_box,
-            additional_inputs=additional_inputs_dict,
-            depths=depth_images,
-            normals=normal_images,
+            metadata=additional_inputs_dict,  # todo fix
         )
         return dataparser_outputs

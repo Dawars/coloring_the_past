@@ -357,7 +357,7 @@ class DtoOModel(NerfactoModel):
         rgb = self.renderer_rgb(rgb=field_outputs[FieldHeadNames.RGB], weights=weights)
         depth = self.renderer_depth(weights=weights, ray_samples=occupancy_samples)
         # the rendered depth is point-to-point distance and we should convert to depth
-        depth = depth / ray_bundle.directions_norm
+        depth = depth / ray_bundle.metadata["directions_norm"]
 
         normal = self.renderer_normal(semantics=field_outputs[FieldHeadNames.NORMAL], weights=weights)
         accumulation = self.renderer_accumulation(weights=weights)
@@ -492,6 +492,7 @@ class DtoOModel(NerfactoModel):
             if surface_points_sdf is not None:
                 loss_dict["surface_sdf_loss"] = torch.abs(surface_points_sdf).mean() * 0.0
 
+            # todo fix sparse points
             sparse_pts = batch["sparse_pts"].to(self.device)
             sparse_pts, pts_weights = sparse_pts[:, :3], sparse_pts[:, 3:]
 

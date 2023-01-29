@@ -45,17 +45,13 @@ from nerfstudio.utils.images import BasicImages
 CONSOLE = Console(width=120)
 
 
-def get_masks(image_idx: int, masks, fg_masks, sparse_pts):
+def get_masks(image_idx: int, fg_masks, sparse_pts):
     """function to process additional mask information
 
     Args:
         image_idx: specific image index to work with
         mask: mask data
     """
-
-    # mask
-    mask = masks[image_idx]
-    mask = BasicImages([mask])
 
     # foreground mask
     fg_mask = fg_masks[image_idx]
@@ -65,7 +61,7 @@ def get_masks(image_idx: int, masks, fg_masks, sparse_pts):
     pts = sparse_pts[image_idx]
     pts = BasicImages([pts])
 
-    return {"mask": mask, "fg_mask": fg_mask, "sparse_pts": pts}
+    return {"fg_mask": fg_mask, "sparse_pts": pts}
 
 
 @dataclass
@@ -76,6 +72,10 @@ class HeritageDataParserConfig(DataParserConfig):
     """target class to instantiate"""
     data: Path = Path("data/phototourism/trevi-fountain")
     """Directory specifying location of data."""
+    include_mono_prior: bool = False
+    """whether or not to include loading of normal """
+    depth_extension: str = '.npy'
+    """Extension for depth map including dot (.npy or .png usually)"""
     scale_factor: float = 3.0
     """How much to scale the camera origins by."""
     alpha_color: str = "white"
@@ -145,7 +145,8 @@ class Heritage(DataParser):
         image_filenames = []
         mask_filenames = []
         semantic_filenames = []
-        masks = []
+        depth_filenames = []
+        normal_filenames = []
         fg_masks = []
         sparse_pts = []
 
@@ -168,20 +169,15 @@ class Heritage(DataParser):
 
             image_filenames.append(self.data / "dense/images" / img.name)
             mask_filenames.append(self.data / "masks" / img.name.replace(".jpg", ".npy"))
-            semantic_filenames.append(self.data / "semantic_maps" / img.name.replace(".jpg", ".npz"))
-
-            # load mask
-            mask = np.load(mask_filenames[-1])  # ["arr_0"]
-
-            mask = torch.from_numpy(mask).unsqueeze(-1).bool()
-            # save nonzeros_indices so we just compute it once
-            nonzero_indices = torch.nonzero(mask[..., 0], as_tuple=False)
-            masks.append(nonzero_indices)
+            semantic_filenames.append(self.data / "semantic_maps" / img.name.replace(".jpg", ".npz"))  # todo change to nerfstudio format
+            if self.config.include_mono_prior:
+                depth_filenames.append(self.data / "depth" / img.name.replace(".jpg", self.config.depth_extension))
+                normal_filenames.append(self.data / "normal" / img.name.replace(".jpg", ".npy"))
 
             # load sky segmentation and it's used as foreground mask
-            semantic = np.load(semantic_filenames[-1])["arr_0"]
+            semantic = np.load(semantic_filenames[-1])["arr_0"]  # todo semantic mask???
             is_sky = semantic != 2  # sky id is 2
-            fg_masks.append(torch.from_numpy(is_sky).unsqueeze(-1))
+            fg_masks.append(torch.from_numpy(is_sky).unsqueeze(-1))  # todo fg_mask
 
             # load sparse 3d points for each view
             # visualize pts3d for each image
@@ -354,19 +350,46 @@ class Heritage(DataParser):
         # indices = indices[::20]
         cameras = cameras[torch.tensor(indices)]
         image_filenames = [image_filenames[i] for i in indices]
-        masks = [masks[i] for i in indices]
+        mask_filenames = [mask_filenames[i] for i in indices]
         fg_masks = [fg_masks[i] for i in indices]
         sparse_pts = [sparse_pts[i] for i in indices]
+        if self.config.include_mono_prior:
+            depth_filenames = [depth_filenames[i] for i in indices]
+            normal_filenames = [normal_filenames[i] for i in indices]
 
         assert len(cameras) == len(image_filenames)
+
+        # todo semantic classes
+        # --- semantics ---
+        # if self.config.include_semantics:
+        #     empty_path = Path()
+        #     replace_this_path = str(empty_path / images_folder / empty_path)
+        #     with_this_path = str(empty_path / segmentations_folder / "thing" / empty_path)
+        #     filenames = [
+        #         Path(str(image_filename).replace(replace_this_path, with_this_path).replace(".jpg", ".png"))
+        #         for image_filename in image_filenames
+        #     ]
+        #     panoptic_classes = load_from_json(self.config.data / "panoptic_classes.json")
+        #     classes = panoptic_classes["thing"]
+        #     colors = torch.tensor(panoptic_classes["thing_colors"], dtype=torch.float32) / 255.0
+        #     semantics = Semantics(filenames=filenames, classes=classes, colors=colors, mask_classes=["person"])
+
+        metadata = {
+            "masks": {"func": get_masks, "kwargs": {"fg_masks": fg_masks, "sparse_pts": sparse_pts}}
+        }
+
+        if self.config.include_mono_prior:
+            metadata["depth_filenames"] = depth_filenames
+            metadata["depth_unit_scale_factor"] = 1.0  # todo add config and optimize in model option
+
+            metadata["normal_filenames"] = normal_filenames
 
         dataparser_outputs = DataparserOutputs(
             image_filenames=image_filenames,
             cameras=cameras,
             scene_box=scene_box,
-            additional_inputs={
-                "masks": {"func": get_masks, "kwargs": {"masks": masks, "fg_masks": fg_masks, "sparse_pts": sparse_pts}}
-            },
+            mask_filenames=mask_filenames,
+            metadata=metadata,
         )
 
         return dataparser_outputs

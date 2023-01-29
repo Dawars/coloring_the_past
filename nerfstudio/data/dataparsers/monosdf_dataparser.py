@@ -296,7 +296,7 @@ class MonoSDFScene(DataParser):
             camera_type=CameraType.PERSPECTIVE,
         )
 
-        # TODO fix later
+        # TODO fix later camera scaling
         # cameras.rescale_output_resolution(scaling_factor=1.0 / self.config.downscale_factor)
         if self.config.include_mono_prior:
             additional_inputs_dict = {
@@ -336,8 +336,8 @@ class MonoSDFScene(DataParser):
             image_filenames=image_filenames,
             cameras=cameras,
             scene_box=scene_box,
-            additional_inputs=additional_inputs_dict,
-            depths=depth_images,
-            normals=normal_images,
+            metadata=additional_inputs_dict,
+            # depths=depth_images,
+            # normals=normal_images,
         )
         return dataparser_outputs
