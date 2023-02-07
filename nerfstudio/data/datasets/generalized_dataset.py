@@ -67,7 +67,8 @@ class GeneralizedDataset(InputDataset):
                 break
 
         self.all_hw_same = all_hw_same
-        self.depth_unit_scale_factor = self.metadata["depth_unit_scale_factor"]
+
+        self.depth_unit_scale_factor = self.metadata.get("depth_unit_scale_factor", 0.)
 
     def get_data(self, image_idx: int) -> Dict:
         """Returns the ImageDataset data as a dictionary.
@@ -115,8 +116,7 @@ class GeneralizedDataset(InputDataset):
         metadata = {}
 
         image_idx = data["image_idx"]
-        height = int(self._dataparser_outputs.cameras.height[image_idx])
-        width = int(self._dataparser_outputs.cameras.width[image_idx])
+        height, width, c = data["image"].images[0].shape
 
         if "depth_filenames" in self.metadata:
             depth_filepath = self.metadata["depth_filenames"][image_idx]
