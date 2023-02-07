@@ -401,7 +401,7 @@ class Heritage(DataParser):
 
         if self.config.include_mono_prior:
             metadata["depth_filenames"] = depth_filenames
-            metadata["depth_unit_scale_factor"] = 1.0  # todo add config and optimize in model option
+            metadata["depth_unit_scale_factor"] = 1e-3  # todo add config and optimize in model option
 
             metadata["normal_filenames"] = normal_filenames
 
