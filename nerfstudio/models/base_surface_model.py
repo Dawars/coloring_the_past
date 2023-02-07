@@ -376,7 +376,7 @@ class SurfaceModel(Model):
                 normal_gt = batch["normal_image"].to(self.device)
                 normal_pred = outputs["normal"]
                 loss_dict["normal_loss"] = (
-                    monosdf_normal_loss(normal_pred, normal_gt) * self.config.mono_normal_loss_mult * sky_mult
+                    monosdf_normal_loss(normal_pred, normal_gt, sky_mask) * self.config.mono_normal_loss_mult
                 )
 
             # monocular depth loss
