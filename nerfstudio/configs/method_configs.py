@@ -169,7 +169,7 @@ method_configs["neus-facto-bigmlp"] = TrainerConfig(
             train_num_times_to_repeat_images=100,
             eval_num_images_to_sample_from=20,
             eval_num_times_to_repeat_images=100,
-            train_num_rays_per_batch=1024,  # todo set back to 2048 and 1024?
+            train_num_rays_per_batch=2048,
             eval_num_rays_per_batch=1024,
             camera_optimizer=CameraOptimizerConfig(
                 mode="off", optimizer=AdamOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
