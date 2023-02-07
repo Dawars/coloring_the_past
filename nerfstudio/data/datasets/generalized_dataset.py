@@ -89,12 +89,11 @@ class GeneralizedDataset(InputDataset):
 
         data = {"image_idx": image_idx}
         data["image"] = BasicImages([image])
-        # todo use metadata
-        # for _, data_func_dict in self._dataparser_outputs.additional_inputs.items():  # todo use this, but put into BasicImages
-        #     assert "func" in data_func_dict, "Missing function to process data: specify `func` in `additional_inputs`"
-        #     func = data_func_dict["func"]
-        #     assert "kwargs" in data_func_dict, "No data to process: specify `kwargs` in `additional_inputs`"
-        #     data.update(func(image_idx, **data_func_dict["kwargs"]))
+        for key, data_func_dict in self._dataparser_outputs.metadata.items():
+            if isinstance(data_func_dict, dict) and "func" in data_func_dict:
+                func = data_func_dict["func"]
+                assert "kwargs" in data_func_dict, "No data to process: specify `kwargs` in `additional_inputs`"
+                data.update(func(image_idx, **data_func_dict["kwargs"]))
         if self.has_masks:
             mask_filepath = self._dataparser_outputs.mask_filenames[image_idx]
             mask_tensor = get_image_mask_tensor_from_path(filepath=mask_filepath, scale_factor=self.scale_factor)
@@ -112,7 +111,6 @@ class GeneralizedDataset(InputDataset):
         return data
 
     def get_metadata(self, data: Dict) -> Dict:
-        # todo how to add to dict?
         metadata = {}
 
         image_idx = data["image_idx"]
