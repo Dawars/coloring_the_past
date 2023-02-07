@@ -198,7 +198,7 @@ def setup_event_writer(is_wandb_enabled: bool, is_tensorboard_enabled: bool, log
     """
     using_event_writer = False
     if is_wandb_enabled:
-        curr_writer = WandbWriter(log_dir=log_dir)  # todo exp_name
+        curr_writer = WandbWriter(log_dir=log_dir)
         EVENT_WRITERS.append(curr_writer)
         using_event_writer = True
     if is_tensorboard_enabled:
@@ -284,8 +284,8 @@ class TimeWriter:
 class WandbWriter(Writer):
     """WandDB Writer Class"""
 
-    def __init__(self, log_dir: Path, experiment_name: str):
-        wandb.init(project="sdfstudio", name=experiment_name, dir=str(log_dir), reinit=True)
+    def __init__(self, log_dir: Path):
+        wandb.init(project="sdfstudio", dir=str(log_dir), reinit=True)
 
     def write_image(self, name: str, image: TensorType["H", "W", "C"], step: int) -> None:
         image = torch.permute(image, (2, 0, 1))
