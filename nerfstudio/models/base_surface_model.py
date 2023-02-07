@@ -360,7 +360,10 @@ class SurfaceModel(Model):
             grad_theta = outputs["eik_grad"]
             loss_dict["eikonal_loss"] = ((grad_theta.norm(2, dim=-1) - 1) ** 2).mean() * self.config.eikonal_loss_mult
 
-            # foreground mask loss
+            # 0 for sky, 1 else
+            sky_mult = (batch["fg_mask"] if "fg_mask" in batch else torch.tensor(1)).float().to(self.device)
+
+            # foreground mask loss for sky
             if "fg_mask" in batch and self.config.fg_mask_loss_mult > 0.0:  # todo fg_mask
                 fg_label = batch["fg_mask"].float().to(self.device)
                 weights_sum = outputs["weights"].sum(dim=1).clip(1e-3, 1.0 - 1e-3)
@@ -373,7 +376,7 @@ class SurfaceModel(Model):
                 normal_gt = batch["normal_image"].to(self.device)
                 normal_pred = outputs["normal"]
                 loss_dict["normal_loss"] = (
-                    monosdf_normal_loss(normal_pred, normal_gt) * self.config.mono_normal_loss_mult
+                    monosdf_normal_loss(normal_pred, normal_gt) * self.config.mono_normal_loss_mult * sky_mult
                 )
 
             # monocular depth loss
@@ -382,8 +385,10 @@ class SurfaceModel(Model):
                 # TODO only supervised pixel that hit the surface and remove hard-coded scaling for depth
                 depth_gt = batch["depth_image"].to(self.device)[..., None]
                 depth_pred = outputs["depth"]
-
-                mask = torch.ones_like(depth_gt).reshape(1, 32, -1).bool()  # todo what is this depth mask??
+                if "fg_mask" in batch:
+                    mask = batch["fg_mask"].reshape(1, 32, -1).bool()
+                else:
+                    mask = torch.ones_like(depth_gt).reshape(1, 32, -1).bool()
                 loss_dict["depth_loss"] = (
                     self.depth_loss(depth_pred.reshape(1, 32, -1), (depth_gt * 50 + 0.5).reshape(1, 32, -1), mask)
                     * self.config.mono_depth_loss_mult
