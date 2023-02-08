@@ -441,6 +441,9 @@ class SurfaceModel(Model):
         rgb = outputs["rgb"]
         acc = colormaps.apply_colormap(outputs["accumulation"])
 
+        # 0 for sky, 1 else
+        sky_mask = (batch["fg_mask"] if "fg_mask" in batch else torch.tensor(1)).float().to(self.device)
+
         normal = outputs["normal"]
         # don't need to normalize here
         # normal = torch.nn.functional.normalize(normal, p=2, dim=-1)
@@ -453,12 +456,12 @@ class SurfaceModel(Model):
             depth_pred = outputs["depth"]
 
             # align to predicted depth and normalize
-            scale, shift = compute_scale_and_shift(  # todo check 1st or last axis for 1 dim
-                depth_pred[None], depth_gt[None, ...], depth_gt[None, ...] > 0.0
+            scale, shift = compute_scale_and_shift(
+                depth_pred[None], depth_gt[None], sky_mask[None]
             )
             depth_pred = depth_pred * scale + shift
 
-            combined_depth = torch.cat([depth_gt, depth_pred], dim=1)
+            combined_depth = torch.cat([depth_gt * sky_mask, depth_pred], dim=1)
             combined_depth = colormaps.apply_depth_colormap(combined_depth)
         else:
             depth = colormaps.apply_depth_colormap(
@@ -469,7 +472,7 @@ class SurfaceModel(Model):
 
         if "normal_image" in batch:
             normal_gt = (batch["normal_image"].to(self.device) + 1.0) / 2.0
-            combined_normal = torch.cat([normal_gt, normal], dim=1)
+            combined_normal = torch.cat([normal_gt * sky_mask, normal], dim=1)
         else:
             combined_normal = torch.cat([normal], dim=1)
 
