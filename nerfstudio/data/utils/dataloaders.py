@@ -131,7 +131,7 @@ class CacheDataloader(DataLoader):
                 # trigger a reset
                 self.num_repeated = 0
                 collated_batch = self._get_collated_batch()
-                self.dataset.image_cache.clear()  # clear cache, maybe not needed
+                # self.dataset.image_cache.clear()  # clear cache, maybe not needed
                 # possibly save a cached item
                 self.cached_collated_batch = collated_batch if self.num_times_to_repeat_images != 0 else None
                 self.first_time = False
