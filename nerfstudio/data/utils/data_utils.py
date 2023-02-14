@@ -124,8 +124,8 @@ def get_normal_image_from_path(
     # important as the output of omnidata is normalized
     normal = normal * 2.0 - 1.0
     normal = torch.from_numpy(normal).float()
-    normal_tr = torch.tensor([[0, -1, 0],
-                              [1, 0, 0],
+    normal_tr = torch.tensor([[1, 0, 0],
+                              [0, -1, 0],
                               [0, 0, -1]], device=normal.device).float()
 
     # transform normal to world coordinate system
