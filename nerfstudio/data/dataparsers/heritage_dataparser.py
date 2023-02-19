@@ -158,6 +158,8 @@ class Heritage(DataParser):
         fys = []
         cxs = []
         cys = []
+        heights = []
+        widths = []
         image_filenames = []
         mask_filenames = []
         semantic_filenames = []
@@ -187,6 +189,8 @@ class Heritage(DataParser):
             fys.append(torch.tensor(cam.params[1]))
             cxs.append(torch.tensor(cam.params[2]))
             cys.append(torch.tensor(cam.params[3]))
+            heights.append(torch.tensor(cam.height))
+            widths.append(torch.tensor(cam.width))
 
             image_filenames.append(self.data / "dense/images" / img.name)
             mask_filenames.append(self.data / "masks" / img.name.replace(".jpg", ".png"))
@@ -222,6 +226,8 @@ class Heritage(DataParser):
         fys = torch.stack(fys).float()
         cxs = torch.stack(cxs).float()
         cys = torch.stack(cys).float()
+        heights = torch.stack(heights)#.float()
+        widths = torch.stack(widths)#.float()
 
         # filter image_filenames and poses based on train/eval split percentage
         num_images = len(image_filenames)
@@ -361,6 +367,8 @@ class Heritage(DataParser):
             fy=fys,
             cx=cxs,
             cy=cys,
+            width=widths,
+            height=heights,
             camera_type=CameraType.PERSPECTIVE,
         )
 
