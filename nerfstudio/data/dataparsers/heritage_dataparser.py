@@ -189,7 +189,7 @@ class Heritage(DataParser):
             cys.append(torch.tensor(cam.params[3]))
 
             image_filenames.append(self.data / "dense/images" / img.name)
-            mask_filenames.append(self.data / "masks" / img.name.replace(".jpg", ".npy"))
+            mask_filenames.append(self.data / "masks" / img.name.replace(".jpg", ".png"))
             semantic_filenames.append(self.data / "semantic_maps" / img.name.replace(".jpg", ".npz"))  # todo change to nerfstudio format
             if self.config.include_mono_prior:
                 depth_filenames.append(self.data / "depth" / img.name.replace(".jpg", self.config.depth_extension))
