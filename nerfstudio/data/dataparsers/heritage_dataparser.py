@@ -138,7 +138,8 @@ class Heritage(DataParser):
             self.files.reset_index(inplace=True, drop=True)
             file_list = list(self.files["filename"])
             for v in imgs.values():
-                img_path_to_id[v.name] = v.id
+                if v.name in file_list:
+                    img_path_to_id[v.name] = v.id
         else:
             for _id, cam in cams.items():
                 img = imgs[_id]
