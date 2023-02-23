@@ -251,13 +251,12 @@ class Heritage(DataParser):
 
             # subsample train set
             if self.config.skip_every_for_train_split >= 1:
-                indices = indices[:: self.config.skip_every_for_train_split]
+                num_sampled_images = num_train_images // self.config.skip_every_for_train_split
+                indices = indices[:num_sampled_images]
         elif split in ["val", "test"]:
             indices = i_eval
         else:
             raise ValueError(f"Unknown dataparser split {split}")
-        print("Indices:")
-        print(indices)
         """
         poses = camera_utils.auto_orient_and_center_poses(
             poses, method=self.config.orientation_method, center_poses=self.config.center_poses
