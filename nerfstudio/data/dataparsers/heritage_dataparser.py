@@ -189,8 +189,8 @@ class Heritage(DataParser):
             assert cam.model == "PINHOLE", "Only pinhole (perspective) camera model is supported at the moment"
 
             pose = torch.cat([torch.tensor(img.qvec2rotmat()), torch.tensor(img.tvec.reshape(3, 1))], dim=1)
-            pose = torch.cat([pose, torch.tensor([[0.0, 0.0, 0.0, 1.0]])], dim=0)
-            poses.append(torch.linalg.inv(pose))
+            pose = torch.cat([pose, torch.tensor([[0.0, 0.0, 0.0, 1.0]])], dim=0)  # cam pose
+            poses.append(torch.linalg.inv(pose))  # cam to world
             fxs.append(torch.tensor(cam.params[0]))
             fys.append(torch.tensor(cam.params[1]))
             cxs.append(torch.tensor(cam.params[2]))
@@ -227,7 +227,7 @@ class Heritage(DataParser):
             sparse_pts.append(img_p3d)
 
         poses = torch.stack(poses).float()
-        poses[..., 1:3] *= -1
+        poses[..., 1:3] *= -1  # flip y,z converting to nerfstudio/opengl camera tr
         fxs = torch.stack(fxs).float()
         fys = torch.stack(fys).float()
         cxs = torch.stack(cxs).float()
