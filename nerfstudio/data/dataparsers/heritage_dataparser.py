@@ -91,6 +91,8 @@ class HeritageDataParserConfig(DataParserConfig):
     """Whether to automatically scale the poses to fit in +/- 1 bounding box."""
     center_poses: bool = True
     """Whether to center the poses."""
+    skip_every_for_train_split: int = 1
+    """sub sampling train images"""
 
 
 @dataclass
@@ -245,6 +247,10 @@ class Heritage(DataParser):
         assert len(i_eval) == num_eval_images
         if split == "train":
             indices = i_train
+
+            # subsample train set
+            if self.config.skip_every_for_train_split >= 1:
+                indices = indices[:: self.config.skip_every_for_train_split]
         elif split in ["val", "test"]:
             indices = i_eval
         else:
