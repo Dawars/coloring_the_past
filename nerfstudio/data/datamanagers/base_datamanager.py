@@ -54,7 +54,7 @@ from nerfstudio.data.pixel_samplers import EquirectangularPixelSampler, PixelSam
 from nerfstudio.data.utils.dataloaders import (
     CacheDataloader,
     FixedIndicesEvalDataloader,
-    RandIndicesEvalDataloader,
+    LoopingEvalDataloader,
 )
 from nerfstudio.data.utils.nerfstudio_collate import nerfstudio_collate
 from nerfstudio.engine.callbacks import TrainingCallback, TrainingCallbackAttributes
@@ -274,7 +274,7 @@ class VanillaDataManagerConfig(InstantiateConfig):
     eval_num_times_to_repeat_images: int = -1
     """When not evaluating on all images, number of iterations before picking
     new images. If -1, never pick new images."""
-    eval_image_indices: Optional[Tuple[int, ...]] = (0,)
+    eval_image_indices: Optional[Tuple[int, ...]] = None
     """Specifies the image indices to use during eval; if None, uses all."""
     camera_optimizer: CameraOptimizerConfig = CameraOptimizerConfig()
     """Specifies the camera pose optimizer used during training. Helpful if poses are noisy, such as for data from
@@ -406,7 +406,7 @@ class VanillaDataManager(DataManager):  # pylint: disable=abstract-method
             num_workers=self.world_size * 2,
             shuffle=False,
         )
-        self.eval_dataloader = RandIndicesEvalDataloader(
+        self.eval_dataloader = LoopingEvalDataloader(
             input_dataset=self.eval_dataset,
             image_indices=self.config.eval_image_indices,
             device=self.device,
