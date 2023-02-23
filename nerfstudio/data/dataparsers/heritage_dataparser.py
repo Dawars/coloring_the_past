@@ -154,6 +154,9 @@ class Heritage(DataParser):
             pts3d_array[pts_id, :3] = torch.from_numpy(pts.xyz)
             error_array[pts_id, 0] = torch.from_numpy(pts.error)
 
+        # determine mask extension
+        mask_ext = ".npy" if (self.data / "masks").glob("*.npy") else ".png"
+
         poses = []
         fxs = []
         fys = []
@@ -194,7 +197,7 @@ class Heritage(DataParser):
             widths.append(torch.tensor(cam.width))
 
             image_filenames.append(self.data / "dense/images" / img.name)
-            mask_filenames.append(self.data / "masks" / img.name.replace(".jpg", ".png"))
+            mask_filenames.append(self.data / "masks" / img.name.replace(".jpg", mask_ext))
             semantic_filenames.append(self.data / "semantic_maps" / img.name.replace(".jpg", ".npz"))  # todo change to nerfstudio format
             if self.config.include_mono_prior:
                 depth_filenames.append(self.data / "depth" / img.name.replace(".jpg", self.config.depth_extension))
