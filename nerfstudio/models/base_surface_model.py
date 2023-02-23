@@ -385,7 +385,7 @@ class SurfaceModel(Model):
                 # TODO only supervised pixel that hit the surface and remove hard-coded scaling for depth
                 depth_gt = batch["depth_image"].to(self.device)[..., None]
                 depth_pred = outputs["depth"]
-                mask = sky_mask.reshape(1, 32, -1).bool()
+                mask = torch.ones_like(depth_gt).reshape(1, 32, -1).bool()
                 loss_dict["depth_loss"] = (
                     self.depth_loss(depth_pred.reshape(1, 32, -1), (depth_gt * 50 + 0.5).reshape(1, 32, -1), mask)
                     * self.config.mono_depth_loss_mult
@@ -442,11 +442,10 @@ class SurfaceModel(Model):
         acc = colormaps.apply_colormap(outputs["accumulation"])
 
         # 0 for sky, 1 else
-        sky_mask = (batch["fg_mask"] if "fg_mask" in batch else torch.tensor(1)).float().to(self.device)
+        # sky_mask = (batch["fg_mask"] if "fg_mask" in batch else torch.tensor(1)).float().to(self.device)
 
         normal = outputs["normal"]
-        # don't need to normalize here
-        # normal = torch.nn.functional.normalize(normal, p=2, dim=-1)
+        normal = torch.nn.functional.normalize(normal, p=2, dim=-1)
         normal = (normal + 1.0) / 2.0
 
         combined_rgb = torch.cat([image, rgb], dim=1)
@@ -457,11 +456,11 @@ class SurfaceModel(Model):
 
             # align to predicted depth and normalize
             scale, shift = compute_scale_and_shift(
-                depth_pred[None], depth_gt[None], sky_mask[None]
+                depth_pred[None], depth_gt[None], depth_gt[None] > 0.0
             )
             depth_pred = depth_pred * scale + shift
 
-            combined_depth = torch.cat([depth_gt * sky_mask, depth_pred], dim=1)
+            combined_depth = torch.cat([depth_gt, depth_pred], dim=1)
             combined_depth = colormaps.apply_depth_colormap(combined_depth)
         else:
             depth = colormaps.apply_depth_colormap(
@@ -472,7 +471,7 @@ class SurfaceModel(Model):
 
         if "normal_image" in batch:
             normal_gt = (batch["normal_image"].to(self.device) + 1.0) / 2.0
-            combined_normal = torch.cat([normal_gt * sky_mask, normal], dim=1)
+            combined_normal = torch.cat([normal_gt, normal], dim=1)
         else:
             combined_normal = torch.cat([normal], dim=1)
 
