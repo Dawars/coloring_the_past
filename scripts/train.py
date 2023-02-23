@@ -68,6 +68,7 @@ def _find_free_port() -> str:
 
 def _set_random_seed(seed) -> None:
     """Set randomness seed in torch and numpy"""
+    print(f"Setting random seed {seed}")
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)

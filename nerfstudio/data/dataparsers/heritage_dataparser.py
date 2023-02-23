@@ -148,6 +148,7 @@ class Heritage(DataParser):
                 img_path_to_id[img.name] = img.id
                 file_list.append(img.name)
 
+        file_list = sorted(file_list)
 
         # key point depth
         pts3d_array = torch.ones(max(pts3d.keys()) + 1, 4)
@@ -255,7 +256,8 @@ class Heritage(DataParser):
             indices = i_eval
         else:
             raise ValueError(f"Unknown dataparser split {split}")
-
+        print("Indices:")
+        print(indices)
         """
         poses = camera_utils.auto_orient_and_center_poses(
             poses, method=self.config.orientation_method, center_poses=self.config.center_poses
