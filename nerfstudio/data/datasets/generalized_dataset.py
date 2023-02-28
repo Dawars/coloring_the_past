@@ -96,15 +96,15 @@ class GeneralizedDataset(InputDataset):
                 data.update(func(image_idx, **data_func_dict["kwargs"]))
         if self.has_masks:
             mask_filepath = self._dataparser_outputs.mask_filenames[image_idx]
-            mask_tensor = get_image_mask_tensor_from_path(filepath=mask_filepath, scale_factor=self.scale_factor)
+            mask_image = get_image_mask_tensor_from_path(filepath=mask_filepath, scale_factor=self.scale_factor)
             assert (
-                    mask_tensor.shape[:2] == image.shape[:2]
-            ), f"Mask and image have different shapes. Got {mask_tensor.shape[:2]} and {image.shape[:2]}"
+                    mask_image.shape[:2] == image.shape[:2]
+            ), f"Mask and image have different shapes. Got {mask_image.shape[:2]} and {image.shape[:2]}"
 
             # save nonzero_indices so that we only compute it once
-            nonzero_indices = torch.nonzero(mask_tensor[..., 0], as_tuple=False)
+            nonzero_indices = torch.nonzero(mask_image[..., 0], as_tuple=False)
             mask_tensor = nonzero_indices
-
+            assert len(mask_tensor) > 0
             data["mask"] = BasicImages([mask_tensor])
         metadata = self.get_metadata(data)
         data.update(metadata)
