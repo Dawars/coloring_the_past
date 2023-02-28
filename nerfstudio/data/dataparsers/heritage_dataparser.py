@@ -158,7 +158,7 @@ class Heritage(DataParser):
             error_array[pts_id, 0] = torch.from_numpy(pts.error)
 
         # determine mask extension
-        mask_ext = ".npy" if (self.data / "masks").glob("*.npy") else ".png"
+        mask_ext = ".npy" if list((self.data / "masks").glob("*.npy")) else ".png"
 
         poses = []
         fxs = []
