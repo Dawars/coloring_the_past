@@ -236,7 +236,7 @@ class SurfaceModel(Model):
     def get_outputs(self, ray_bundle: RayBundle) -> Dict:
         # TODO make this configurable
         # compute near and far from from sphere with radius 1.0
-        # ray_bundle = self.sphere_collider(ray_bundle)
+        ray_bundle = self.collider(ray_bundle)
 
         samples_and_field_outputs = self.sample_and_forward_field(ray_bundle=ray_bundle)
 

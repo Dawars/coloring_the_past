@@ -32,6 +32,7 @@ from nerfstudio.engine.callbacks import (
     TrainingCallbackLocation,
 )
 from nerfstudio.field_components.field_heads import FieldHeadNames
+from nerfstudio.model_components.scene_colliders import SphereCollider
 from nerfstudio.models.neus import NeuSModel, NeuSModelConfig
 from nerfstudio.fields.density_fields import HashMLPDensityField
 from nerfstudio.model_components.losses import interlevel_loss
@@ -87,6 +88,9 @@ class NeuSFactoModel(NeuSModel):
     def populate_modules(self):
         """Set the fields and modules."""
         super().populate_modules()
+
+        # Neural Reconstruction in the wild use sphere collider so we overwrite it here
+        self.collider = SphereCollider(radius=1.0, soft_intersection=False)
 
         self.density_fns = []
         num_prop_nets = self.config.num_proposal_iterations
