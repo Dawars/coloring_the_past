@@ -82,7 +82,7 @@ class SurfaceModelConfig(ModelConfig):
     use_average_appearance_embedding: bool = False
     """Whether to use average appearance embedding or zeros for inference."""
     eikonal_loss_mult: float = 0.1
-    """Monocular normal consistency loss multiplier."""
+    """Eikonal loss multiplier."""
     fg_mask_loss_mult: float = 0.01
     """Foreground mask loss multiplier."""
     mono_normal_loss_mult: float = 0.0
@@ -322,6 +322,9 @@ class SurfaceModel(Model):
             "depth": depth,
             "normal": normal,
             "weights": weights,
+            "ray_points": self.scene_contraction(
+                ray_samples.frustums.get_start_positions()
+            ),  # used for creating visiblity mask
             "directions_norm": ray_bundle.metadata["directions_norm"],  # used to scale z_vals for free space and sdf loss  # todo what is this??
         }
         outputs.update(bg_outputs)
