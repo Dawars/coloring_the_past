@@ -16,6 +16,7 @@
 Field for compound nerf model, adds scene contraction and image embeddings to instant ngp
 """
 
+import math
 from dataclasses import dataclass, field
 from typing import Optional, Type, Union
 
