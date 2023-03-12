@@ -72,6 +72,11 @@ Have feature requests? Want to add your brand-spankin'-new NeRF model? Have a ne
 
 We hope nerfstudio enables you to build faster :hammer: learn together :books: and contribute to our NeRF community :sparkling_heart:.
 
+# Updates
+**2023.03.12**: Support [BakedSDF](https://bakedsdf.github.io/).
+
+**2022.12.28**: Support [Neural RGB-D Surface Reconstruction](https://dazinovic.github.io/neural-rgbd-surface-reconstruction/).
+
 # Quickstart
 
 The quickstart will help you get started with the default vanilla NeRF trained on the classic Blender Lego scene.
