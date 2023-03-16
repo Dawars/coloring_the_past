@@ -471,6 +471,7 @@ method_configs["bakedsdf-mlp"] = TrainerConfig(
             use_anneal_beta=True,
             proposal_weights_anneal_max_num_iters=20000,
             eval_num_rays_per_chunk=1024,
+            use_spatial_varying_eikonal_loss=True,
         ),
     ),
     optimizers={
