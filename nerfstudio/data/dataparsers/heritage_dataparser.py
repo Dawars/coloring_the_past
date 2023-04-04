@@ -274,10 +274,11 @@ class Heritage(DataParser):
 
         # normalize with scene radius
         radius = scene_config["radius"]
+        scale = 1.0 / (radius * 1.01)
         origin = np.array(scene_config["origin"]).reshape(1, 3)
         origin = torch.from_numpy(origin)
         poses[:, :3, 3] -= origin
-        poses[:, :3, 3] *= 1.0 / (radius * 1.01)  # enlarge the radius a little bit
+        poses[:, :3, 3] *= scale  # enlarge the radius a little bit
 
         poses, transform = camera_utils.auto_orient_and_center_poses(
             poses,
@@ -288,7 +289,7 @@ class Heritage(DataParser):
         # scale pts accordingly
         for pts in sparse_pts:
             pts[:, :3] -= origin
-            pts[:, :3] *= 1.0 / (radius * 1.01)  # should be the same as pose preprocessing
+            pts[:, :3] *= scale  # should be the same as pose preprocessing
             pts[:, :3] = pts[:, :3] @ transform[:3, :3].t() + transform[:3, 3:].t()
 
         # create occupancy grid from sparse points
@@ -317,7 +318,7 @@ class Heritage(DataParser):
 
         # scale pts accordingly
         points_ori -= origin
-        points_ori[:, :3] *= 1.0 / (radius * 1.01)  # should be the same as pose preprocessing
+        points_ori[:, :3] *= scale  # should be the same as pose preprocessing
         points_ori[:, :3] = points_ori[:, :3] @ transform[:3, :3].t() + transform[:3, 3:].t()
 
         print(points_ori.shape)
@@ -430,6 +431,8 @@ class Heritage(DataParser):
             scene_box=scene_box,
             mask_filenames=mask_filenames,
             metadata=metadata,
+            dataparser_transform=transform,  # origin substraction not included
+            dataparser_scale=scale,
         )
 
         return dataparser_outputs
