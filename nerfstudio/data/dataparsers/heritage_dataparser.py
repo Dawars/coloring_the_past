@@ -136,19 +136,28 @@ class Heritage(DataParser):
         if image_list:
             CONSOLE.status(f"Found .tsv file for image list {image_list[0]}")
             self.files = pd.read_csv(image_list[0], sep="\t")
-            # we accept all images
+            self.files = self.files[~self.files['id'].isnull()]  # remove data without id
             self.files.reset_index(inplace=True, drop=True)
             file_list = list(self.files["filename"])
-            for v in imgs.values():
-                if v.name in file_list:
-                    img_path_to_id[v.name] = v.id
-        else:
-            for _id, cam in cams.items():
-                img = imgs[_id]
-                img_path_to_id[img.name] = img.id
-                file_list.append(img.name)
 
-        file_list = sorted(file_list)
+            for v in imgs.values():
+                img_path_to_id[v.name] = v.id
+            self.img_ids = []
+            self.image_paths = {}  # {id: filename}
+            for filename in list(self.files['filename']):
+                id_ = img_path_to_id[filename]
+                self.image_paths[id_] = filename
+                self.img_ids += [id_]
+            # for v in imgs.values():
+            #     if v.name in file_list:
+            #         img_path_to_id[v.name] = v.id
+        else:
+            raise
+            # for _id, cam in cams.items():
+            #     img = imgs[_id]
+            #     img_path_to_id[img.name] = img.id
+            #     file_list.append(img.name)
+        # file_list = sorted(file_list)
 
         # key point depth
         pts3d_array = torch.ones(max(pts3d.keys()) + 1, 4)
@@ -237,15 +246,24 @@ class Heritage(DataParser):
         widths = torch.stack(widths)#.float()
 
         # filter image_filenames and poses based on train/eval split percentage
-        num_images = len(image_filenames)
+
+        # Step 5. split the img_ids (the number of images is verfied to match that in the paper)
+        i_train = [i for i, filename in enumerate(image_filenames)
+                   if self.files.loc[i, 'split'] == 'train']
+        i_eval = [i for i, filename in enumerate(image_filenames)
+                  if self.files.loc[i, 'split'] == 'test']
+
+        num_images = len(i_train)
         num_train_images = math.ceil(num_images * self.config.train_split_percentage)
-        num_eval_images = num_images - num_train_images
-        i_all = np.arange(num_images)
-        i_train = np.linspace(
-            0, num_images - 1, num_train_images, dtype=int
-        )  # equally spaced training images starting and ending at 0 and num_images-1
-        i_eval = np.setdiff1d(i_all, i_train)  # eval images are the remaining images
-        assert len(i_eval) == num_eval_images
+        # num_eval_images = num_images - num_train_images
+        # # num_eval_images = 1
+        # # num_train_images = num_images - num_eval_images
+        # i_all = np.arange(num_images)
+        # i_train = np.linspace(
+        #     0, num_images - 1, num_train_images, dtype=int
+        # )  # equally spaced training images starting and ending at 0 and num_images-1
+        # i_eval = np.setdiff1d(i_all, i_train)  # eval images are the remaining images
+        # assert len(i_eval) == num_eval_images
         if split == "train":
             indices = i_train
 
