@@ -115,7 +115,7 @@ class LoggingConfig(PrintableConfig):
     """number of steps between logging stats"""
     max_buffer_size: int = 20
     """maximum history size to keep for computing running averages of stats.
-     e.g. if 20, averages will be computed over past 20 occurrences."""
+     e.g. if 20, averages will be computed over past 20 occurances."""
     local_writer: LocalWriterConfig = LocalWriterConfig(enable=True)
     """if provided, will print stats locally. if None, will disable printing"""
     enable_profiler: bool = True

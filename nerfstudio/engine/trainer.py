@@ -79,6 +79,8 @@ class TrainerConfig(ExperimentConfig):
     load_config: Optional[Path] = None
     """Optionally log gradients during training"""
     log_gradients: bool = False
+    accumulate_grad_steps: int = 1
+    """Number of gradient steps to accumulate before taking an optimizer step."""
 
 
 class Trainer:
@@ -370,7 +372,7 @@ class Trainer:
         """
         self.optimizers.zero_grad_all()
         cpu_or_cuda_str = self.device.split(":")[0]
-        for _ in range(self.config.trainer.accumulate_grad_steps):
+        for _ in range(self.config.accumulate_grad_steps):
             with torch.autocast(device_type=cpu_or_cuda_str, enabled=self.mixed_precision):
                 _, loss_dict, metrics_dict = self.pipeline.get_train_loss_dict(step=step)
                 loss = functools.reduce(torch.add, loss_dict.values())
