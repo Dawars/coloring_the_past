@@ -30,8 +30,7 @@ from torchmetrics.functional import structural_similarity_index_measure
 from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
 from torchtyping import TensorType
 from typing_extensions import Literal
-
-from nerfstudio.cameras.rays import RayBundle
+from nerfstudio.cameras.rays import RayBundle, RaySamples
 from nerfstudio.field_components.encodings import NeRFEncoding
 from nerfstudio.field_components.field_heads import FieldHeadNames
 from nerfstudio.field_components.spatial_distortions import SceneContraction
@@ -81,7 +80,7 @@ class SurfaceModelConfig(ModelConfig):
     use_average_appearance_embedding: bool = False
     """Whether to use average appearance embedding or zeros for inference."""
     eikonal_loss_mult: float = 0.1
-    """Monocular normal consistency loss multiplier."""
+    """Eikonal loss multiplier."""
     fg_mask_loss_mult: float = 0.01
     """Foreground mask loss multiplier."""
     mono_normal_loss_mult: float = 0.0
@@ -232,6 +231,42 @@ class SurfaceModel(Model):
             ray_bundle (RayBundle): _description_
             return_samples (bool, optional): _description_. Defaults to False.
         """
+
+    def get_foreground_mask(self, ray_samples: RaySamples) -> TensorType:
+        """_summary_
+
+        Args:
+            ray_samples (RaySamples): _description_
+        """
+        # TODO support multiple foreground type: box and sphere
+        inside_sphere_mask = (ray_samples.frustums.get_start_positions().norm(dim=-1, keepdim=True) < 1.0).float()
+        return inside_sphere_mask
+
+    def forward_background_field_and_merge(self, ray_samples: RaySamples, field_outputs: Dict) -> Dict:
+        """_summary_
+
+        Args:
+            ray_samples (RaySamples): _description_
+            field_outputs (Dict): _description_
+        """
+
+        inside_sphere_mask = self.get_foreground_mask(ray_samples)
+        # TODO only forward the points that are outside the sphere if there is a background model
+
+        field_outputs_bg = self.field_background(ray_samples)
+        field_outputs_bg[FieldHeadNames.ALPHA] = ray_samples.get_alphas(field_outputs_bg[FieldHeadNames.DENSITY])
+
+        field_outputs[FieldHeadNames.ALPHA] = (
+            field_outputs[FieldHeadNames.ALPHA] * inside_sphere_mask
+            + (1.0 - inside_sphere_mask) * field_outputs_bg[FieldHeadNames.ALPHA]
+        )
+        field_outputs[FieldHeadNames.RGB] = (
+            field_outputs[FieldHeadNames.RGB] * inside_sphere_mask
+            + (1.0 - inside_sphere_mask) * field_outputs_bg[FieldHeadNames.RGB]
+        )
+
+        # TODO make everything outside the sphere to be 0
+        return field_outputs
 
     def get_outputs(self, ray_bundle: RayBundle) -> Dict:
         # TODO make this configurable
@@ -436,7 +471,6 @@ class SurfaceModel(Model):
     def get_image_metrics_and_images(
         self, outputs: Dict[str, torch.Tensor], batch: Dict[str, torch.Tensor]
     ) -> Tuple[Dict[str, float], Dict[str, torch.Tensor]]:
-
         image = batch["image"].to(self.device)
         rgb = outputs["rgb"]
         acc = colormaps.apply_colormap(outputs["accumulation"])
@@ -445,7 +479,8 @@ class SurfaceModel(Model):
         # sky_mask = (batch["fg_mask"] if "fg_mask" in batch else torch.tensor(1)).float().to(self.device)
 
         normal = outputs["normal"]
-        normal = torch.nn.functional.normalize(normal, p=2, dim=-1)
+        # don't need to normalize here
+        # normal = torch.nn.functional.normalize(normal, p=2, dim=-1)
         normal = (normal + 1.0) / 2.0
 
         combined_rgb = torch.cat([image, rgb], dim=1)

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nerfstudio"
-version = "0.1.16"
+version = "0.1.12"
 description = "All-in-one repository for state-of-the-art NeRFs"
 readme = "README.md"
 license = { text="Apache 2.0"}
@@ -50,7 +50,7 @@ dependencies = [
     "torchtyping>=0.1.4",
     "torchvision>=0.13.0",
     "u-msgpack-python>=2.4.1",
-    "nuscenes-devkit>=1.1.1",
+    #"nuscenes-devkit>=1.1.1",
     "wandb>=0.13.3",
     "xatlas",
     "trimesh",

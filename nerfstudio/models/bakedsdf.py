@@ -13,15 +13,15 @@
 # limitations under the License.
 
 """
-Implementation of VolSDF.
+Implementation of BakedSDF.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List, Type, Tuple, Dict
-import numpy as np
+from typing import Dict, List, Tuple, Type
 
+import numpy as np
 import torch
 from torch.nn import Parameter
 
@@ -32,19 +32,18 @@ from nerfstudio.engine.callbacks import (
     TrainingCallbackLocation,
 )
 from nerfstudio.field_components.field_heads import FieldHeadNames
-from nerfstudio.model_components.scene_colliders import SphereCollider
-from nerfstudio.models.neus import NeuSModel, NeuSModelConfig
 from nerfstudio.fields.density_fields import HashMLPDensityField
-from nerfstudio.model_components.losses import interlevel_loss, interlevel_loss_zip
+from nerfstudio.model_components.losses import interlevel_loss
 from nerfstudio.model_components.ray_samplers import ProposalNetworkSampler
+from nerfstudio.models.volsdf import VolSDFModel, VolSDFModelConfig
 from nerfstudio.utils import colormaps
 
 
 @dataclass
-class NeuSFactoModelConfig(NeuSModelConfig):
-    """UniSurf Model Config"""
+class BakedSDFModelConfig(VolSDFModelConfig):
+    """BakedSDF Model Config"""
 
-    _target: Type = field(default_factory=lambda: NeuSFactoModel)
+    _target: Type = field(default_factory=lambda: BakedSDFFactoModel)
     num_proposal_samples_per_ray: Tuple[int] = (256, 96)
     """Number of samples per ray for the proposal network."""
     num_neus_samples_per_ray: int = 48
@@ -74,46 +73,37 @@ class NeuSFactoModelConfig(NeuSModelConfig):
     """Max num iterations for the annealing function."""
     use_single_jitter: bool = True
     """Whether use single jitter or not for the proposal networks."""
-    use_anneal_beta: bool = False
-    """whether to anneal beta of neus or not similar to bakedsdf"""
-    beta_anneal_max_num_iters: int = 1000_000
-    """max num iterations for the annealing function of beta"""
-    beta_anneal_init: float = 0.05
-    """initial beta for annealing function"""
-    beta_anneal_end: float = 0.0002
-    """final beta for annealing function"""
-    # TODO move to base model config since it can be used in all models
-    enable_progressive_hash_encoding: bool = False
-    """whether to use progressive hash encoding"""
-    enable_numerical_gradients_schedule: bool = False
-    """whether to use numerical gradients delta schedule"""
-    enable_curvature_loss_schedule: bool = False
-    """whether to use curvature loss weight schedule"""
-    curvature_loss_multi: float = 0.0
-    """curvature loss weight"""
-    curvature_loss_warmup_steps: int = 20_000
-    """curvature loss warmup steps"""
-    level_init: int = 4
-    """initial level of multi-resolution hash encoding"""
-    steps_per_level: int = 10_000
-    """steps per level of multi-resolution hash encoding"""
+    use_anneal_beta: bool = True
+    """whether to use anneal beta"""
+    beta_anneal_max_num_iters: int = 250000
+    """Max num iterations for the annealing of beta in laplacian density."""
+    beta_anneal_init: float = 0.1
+    """Initial value of beta for the annealing of beta in laplacian density."""
+    beta_anneal_end: float = 0.001
+    """End value of beta for the annealing of beta in laplacian density."""
+    use_anneal_eikonal_weight: bool = False
+    """whether to use annealing for eikonal loss weight"""
+    eikonal_anneal_max_num_iters: int = 250000
+    """Max num iterations for the annealing of beta in laplacian density."""
+    use_spatial_varying_eikonal_loss: bool = False
+    """whether to use different weight of eikonal loss based the points norm, farway points have large weights"""
+    eikonal_loss_mult_start: float = 0.01
+    eikonal_loss_mult_end: float = 0.1
+    eikonal_loss_mult_slop: float = 2.0
 
 
-class NeuSFactoModel(NeuSModel):
-    """NeuS facto model
+class BakedSDFFactoModel(VolSDFModel):
+    """BakedSDF model
 
     Args:
-        config: NeuS configuration to instantiate model
+        config: BakedSDF configuration to instantiate model
     """
 
-    config: NeuSFactoModelConfig
+    config: BakedSDFModelConfig
 
     def populate_modules(self):
         """Set the fields and modules."""
         super().populate_modules()
-
-        # Neural Reconstruction in the wild use sphere collider so we overwrite it here
-        self.collider = SphereCollider(radius=1.0, soft_intersection=False)
 
         self.density_fns = []
         num_prop_nets = self.config.num_proposal_iterations
@@ -151,8 +141,22 @@ class NeuSFactoModel(NeuSModel):
         )
 
     def get_param_groups(self) -> Dict[str, List[Parameter]]:
-        param_groups = super().get_param_groups()
+        param_groups = {}
+        if self.config.use_anneal_beta:
+            # don't optimize beta in laplace density if use annealing beta
+            param_groups["fields"] = [
+                n_p[1] for n_p in filter(lambda n_p: "laplace_density" not in n_p[0], self.field.named_parameters())
+            ]
+        else:
+            param_groups["fields"] = list(self.field.parameters())
+
         param_groups["proposal_networks"] = list(self.proposal_networks.parameters())
+
+        if self.config.background_model != "none":
+            param_groups["field_background"] = list(self.field_background.parameters())
+        else:
+            param_groups["field_background"] = list(self.field_background)
+            
         return param_groups
 
     def get_training_callbacks(
@@ -193,11 +197,10 @@ class NeuSFactoModel(NeuSModel):
             beta_end = self.config.beta_anneal_end
 
             def set_beta(step):
-                # bakedsdf's beta schedule adapted to neus
+                # bakedsdf's beta schedule
                 train_frac = np.clip(step / M, 0, 1)
                 beta = beta_init / (1 + (beta_init - beta_end) / beta_end * (train_frac**0.8))
-                beta = np.log(1.0 / beta) / 10.0
-                self.field.deviation_network.variance.data[...] = beta
+                self.field.laplace_density.beta.data[...] = beta
 
             callbacks.append(
                 TrainingCallback(
@@ -207,85 +210,33 @@ class NeuSFactoModel(NeuSModel):
                 )
             )
 
-        # read the hash encoding parameters from field
-        level_init = self.config.level_init
-        # schedule the delta in numerical gradients computation
-        num_levels = self.field.num_levels
-        max_res = self.field.max_res
-        base_res = self.field.base_res
-        growth_factor = self.field.growth_factor
+        if self.config.use_anneal_eikonal_weight:
+            # anneal the beta of volsdf before each training iterations
+            K = self.config.eikonal_anneal_max_num_iters
+            weight_init = 0.01
+            weight_end = 0.1
 
-        steps_per_level = self.config.steps_per_level
-
-        init_delta = 1.0 / base_res
-        end_delta = 1.0 / max_res
-
-        # compute the delta based on level
-        if self.config.enable_numerical_gradients_schedule:
-
-            def set_delta(step):
-                delta = 1.0 / (base_res * growth_factor ** (step / steps_per_level))
-                delta = max(1.0 / (4.0 * max_res), delta)
-                self.field.set_numerical_gradients_delta(
-                    delta * 4.0
-                )  # TODO because we divide 4 to normalize points to [0, 1]
+            def set_weight(step):
+                # bakedsdf's beta schedule
+                train_frac = np.clip(step / K, 0, 1)
+                mult = weight_end / (1 + (weight_end - weight_init) / weight_init * ((1.0 - train_frac) ** 10))
+                self.config.eikonal_loss_mult = mult
 
             callbacks.append(
                 TrainingCallback(
                     where_to_run=[TrainingCallbackLocation.BEFORE_TRAIN_ITERATION],
                     update_every_num_iters=1,
-                    func=set_delta,
+                    func=set_weight,
                 )
             )
-
-        # schedule the current level of multi-resolution hash encoding
-        if self.config.enable_progressive_hash_encoding:
-
-            def set_mask(step):
-                # TODO make this consistent with delta schedule
-                level = int(step / steps_per_level) + 1
-                level = max(level, level_init)
-                self.field.update_mask(level)
-
-            callbacks.append(
-                TrainingCallback(
-                    where_to_run=[TrainingCallbackLocation.BEFORE_TRAIN_ITERATION],
-                    update_every_num_iters=1,
-                    func=set_mask,
-                )
-            )
-        # schedule the curvature loss weight
-        # linear warmup for 5000 steps to 5e-4 and then decay as delta
-        if self.config.enable_curvature_loss_schedule:
-
-            def set_curvature_loss_mult_factor(step):
-                if step < self.config.curvature_loss_warmup_steps:
-                    factor = step / self.config.curvature_loss_warmup_steps
-                else:
-                    delta = 1.0 / (
-                        base_res * growth_factor ** ((step - self.config.curvature_loss_warmup_steps) / steps_per_level)
-                    )
-                    delta = max(1.0 / (max_res * 10.0), delta)
-                    factor = delta / init_delta
-
-                self.curvature_loss_multi_factor = factor
-
-            callbacks.append(
-                TrainingCallback(
-                    where_to_run=[TrainingCallbackLocation.BEFORE_TRAIN_ITERATION],
-                    update_every_num_iters=1,
-                    func=set_curvature_loss_mult_factor,
-                )
-            )
-
-        # TODO switch to analytic gradients after delta is small enough?
 
         return callbacks
 
     def sample_and_forward_field(self, ray_bundle: RayBundle):
         ray_samples, weights_list, ray_samples_list = self.proposal_sampler(ray_bundle, density_fns=self.density_fns)
-
-        field_outputs = self.field(ray_samples, return_alphas=True)
+        # TODO only forward the points that are inside the sphere
+        field_outputs = self.field(ray_samples)
+        field_outputs[FieldHeadNames.ALPHA] = ray_samples.get_alphas(field_outputs[FieldHeadNames.DENSITY])
 
         if self.config.background_model != "none":
             field_outputs = self.forward_background_field_and_merge(ray_samples, field_outputs)
@@ -302,52 +253,42 @@ class NeuSFactoModel(NeuSModel):
             "weights_list": weights_list,
             "ray_samples_list": ray_samples_list,
         }
+
         return samples_and_field_outputs
 
     def get_loss_dict(self, outputs, batch, metrics_dict=None):
-        # convert output to grayscale if input image is grayscale
-        grayscale = batch["is_gray"][:, 0]
-        if grayscale.any():
-            rgb2gray = outputs["rgb"][grayscale][:, 0] * 0.2989 + \
-                       outputs["rgb"][grayscale][:, 1] * 0.5870 + \
-                       outputs["rgb"][grayscale][:, 2] * 0.1140
-
-            outputs["rgb"][grayscale] = rgb2gray.unsqueeze(-1)
-
-        loss_dict = super().get_loss_dict(outputs, batch, metrics_dict)
+        loss_dict = {}
+        image = batch["image"].to(self.device)
+        loss_dict["rgb_loss"] = self.rgb_loss(image, outputs["rgb"])
 
         if self.training:
-            loss_dict["interlevel_loss"] = self.config.interlevel_loss_mult * interlevel_loss_zip(
+            # eikonal loss
+            grad_theta = outputs["eik_grad"]
+            if self.config.use_spatial_varying_eikonal_loss:
+
+                points_norm = outputs["points_norm"][..., 0]
+                points_weights = torch.where(points_norm <= 1, torch.ones_like(points_norm), points_norm)
+
+                # shortcut
+                weight_init = self.config.eikonal_loss_mult_start
+                weight_end = self.config.eikonal_loss_mult_end
+                slop = self.config.eikonal_loss_mult_slop
+
+                points_weights = weight_end / (
+                    1 + (weight_end - weight_init) / weight_init * ((2.0 - points_weights) ** slop)
+                )
+
+                loss_dict["eikonal_loss"] = (((grad_theta.norm(2, dim=-1) - 1) ** 2) * points_weights).mean()
+            else:
+                loss_dict["eikonal_loss"] = (
+                    (grad_theta.norm(2, dim=-1) - 1) ** 2
+                ).mean() * self.config.eikonal_loss_mult
+
+            loss_dict["interlevel_loss"] = self.config.interlevel_loss_mult * interlevel_loss(
                 outputs["weights_list"], outputs["ray_samples_list"]
             )
 
-        # curvature loss
-        if self.training and self.config.curvature_loss_multi > 0.0:
-            delta = self.field.numerical_gradients_delta
-            centered_sdf = outputs["field_outputs"][FieldHeadNames.SDF]
-            sourounding_sdf = outputs["field_outputs"]["sampled_sdf"]
-
-            sourounding_sdf = sourounding_sdf.reshape(centered_sdf.shape[:2] + (3, 2))
-
-            # (a - b)/d - (b -c)/d = (a + c - 2b)/d
-            # ((a - b)/d - (b -c)/d)/d = (a + c - 2b)/(d*d)
-            curvature = (sourounding_sdf.sum(dim=-1) - 2 * centered_sdf) / (delta * delta)
-            loss_dict["curvature_loss"] = (
-                torch.abs(curvature).mean() * self.config.curvature_loss_multi * self.curvature_loss_multi_factor
-            )
-
         return loss_dict
-
-    def get_metrics_dict(self, outputs, batch) -> Dict:
-        metrics_dict = super().get_metrics_dict(outputs, batch)
-
-        if self.training:
-            # training statics
-            metrics_dict["activated_encoding"] = self.field.hash_encoding_mask.mean().item()
-            metrics_dict["numerical_gradients_delta"] = self.field.numerical_gradients_delta
-            metrics_dict["curvature_loss_multi"] = self.curvature_loss_multi_factor * self.config.curvature_loss_multi
-
-        return metrics_dict
 
     def get_image_metrics_and_images(
         self, outputs: Dict[str, torch.Tensor], batch: Dict[str, torch.Tensor]
@@ -362,3 +303,8 @@ class NeuSFactoModel(NeuSModel):
             images_dict[key] = prop_depth_i
 
         return metrics_dict, images_dict
+
+    def get_metrics_dict(self, outputs, batch) -> Dict:
+        metric_dict = super().get_metrics_dict(outputs, batch)
+        metric_dict["eikonal_loss_mult"] = self.config.eikonal_loss_mult
+        return metric_dict
