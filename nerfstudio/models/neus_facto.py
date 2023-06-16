@@ -83,13 +83,13 @@ class NeuSFactoModelConfig(NeuSModelConfig):
     beta_anneal_end: float = 0.0002
     """final beta for annealing function"""
     # TODO move to base model config since it can be used in all models
-    enable_progressive_hash_encoding: bool = False
+    enable_progressive_hash_encoding: bool = True
     """whether to use progressive hash encoding"""
-    enable_numerical_gradients_schedule: bool = False
+    enable_numerical_gradients_schedule: bool = True
     """whether to use numerical gradients delta schedule"""
-    enable_curvature_loss_schedule: bool = False
+    enable_curvature_loss_schedule: bool = True
     """whether to use curvature loss weight schedule"""
-    curvature_loss_multi: float = 0.0
+    curvature_loss_multi: float = 5e-4
     """curvature loss weight"""
     curvature_loss_warmup_steps: int = 20_000
     """curvature loss warmup steps"""
