@@ -30,8 +30,8 @@ from torchmetrics.functional import structural_similarity_index_measure
 from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
 from torchtyping import TensorType
 from typing_extensions import Literal
+from nerfstudio.cameras.rays import RayBundle, RaySamples
 
-from nerfstudio.cameras.rays import RayBundle
 from nerfstudio.engine.callbacks import TrainingCallback, TrainingCallbackAttributes, TrainingCallbackLocation
 from nerfstudio.field_components.encodings import NeRFEncoding
 from nerfstudio.field_components.field_heads import FieldHeadNames
@@ -121,6 +121,8 @@ class SurfaceModelConfig(ModelConfig):
     """Total variational loss mutliplier"""
     overwrite_near_far_plane: bool = False
     """whether to use near and far collider from command line"""
+    scene_contraction_norm: Literal["inf", "l2"] = "inf"
+    """Which norm to use for the scene contraction."""
     color_loss: bool = False
     """Projecting mlp output to grayscale in rgb loss when input is grayscale"""
     start_after_step_mono_loss: int = -1
@@ -140,7 +142,14 @@ class SurfaceModel(Model):
         """Set the fields and modules."""
         super().populate_modules()
 
-        self.scene_contraction = SceneContraction(order=float("inf"))
+        if self.config.scene_contraction_norm == "inf":
+            order = float("inf")
+        elif self.config.scene_contraction_norm == "l2":
+            order = None
+        else:
+            raise ValueError("Invalid scene contraction norm")
+
+        self.scene_contraction = SceneContraction(order=order)
 
         # Can we also use contraction for sdf?
         # Fields
@@ -263,6 +272,42 @@ class SurfaceModel(Model):
             return_samples (bool, optional): _description_. Defaults to False.
         """
 
+    def get_foreground_mask(self, ray_samples: RaySamples) -> TensorType:
+        """_summary_
+
+        Args:
+            ray_samples (RaySamples): _description_
+        """
+        # TODO support multiple foreground type: box and sphere
+        inside_sphere_mask = (ray_samples.frustums.get_start_positions().norm(dim=-1, keepdim=True) < 1.0).float()
+        return inside_sphere_mask
+
+    def forward_background_field_and_merge(self, ray_samples: RaySamples, field_outputs: Dict) -> Dict:
+        """_summary_
+
+        Args:
+            ray_samples (RaySamples): _description_
+            field_outputs (Dict): _description_
+        """
+
+        inside_sphere_mask = self.get_foreground_mask(ray_samples)
+        # TODO only forward the points that are outside the sphere if there is a background model
+
+        field_outputs_bg = self.field_background(ray_samples)
+        field_outputs_bg[FieldHeadNames.ALPHA] = ray_samples.get_alphas(field_outputs_bg[FieldHeadNames.DENSITY])
+
+        field_outputs[FieldHeadNames.ALPHA] = (
+            field_outputs[FieldHeadNames.ALPHA] * inside_sphere_mask
+            + (1.0 - inside_sphere_mask) * field_outputs_bg[FieldHeadNames.ALPHA]
+        )
+        field_outputs[FieldHeadNames.RGB] = (
+            field_outputs[FieldHeadNames.RGB] * inside_sphere_mask
+            + (1.0 - inside_sphere_mask) * field_outputs_bg[FieldHeadNames.RGB]
+        )
+
+        # TODO make everything outside the sphere to be 0
+        return field_outputs
+
     def get_outputs(self, ray_bundle: RayBundle) -> Dict:
         # TODO make this configurable
         # compute near and far from from sphere with radius 1.0
@@ -274,7 +319,6 @@ class SurfaceModel(Model):
         field_outputs = samples_and_field_outputs["field_outputs"]
         ray_samples = samples_and_field_outputs["ray_samples"]
         weights = samples_and_field_outputs["weights"]
-        bg_transmittance = samples_and_field_outputs["bg_transmittance"]
 
         rgb = self.renderer_rgb(rgb=field_outputs[FieldHeadNames.RGB], weights=weights)
         depth = self.renderer_depth(weights=weights, ray_samples=ray_samples)
@@ -327,11 +371,11 @@ class SurfaceModel(Model):
             ),  # used for creating visiblity mask
             "directions_norm": ray_bundle.metadata["directions_norm"],  # used to scale z_vals for free space and sdf loss  # todo what is this??
         }
-        outputs.update(bg_outputs)
 
         if self.training:
             grad_points = field_outputs[FieldHeadNames.GRADIENT]
-            outputs.update({"eik_grad": grad_points})
+            points_norm = field_outputs["points_norm"]
+            outputs.update({"eik_grad": grad_points, "points_norm": points_norm})
 
             # TODO volsdf use different point set for eikonal loss
             # grad_points = self.field.gradient(eik_points)
@@ -480,7 +524,6 @@ class SurfaceModel(Model):
     def get_image_metrics_and_images(
         self, outputs: Dict[str, torch.Tensor], batch: Dict[str, torch.Tensor]
     ) -> Tuple[Dict[str, float], Dict[str, torch.Tensor]]:
-
         image = batch["image"].to(self.device)
         rgb = outputs["rgb"]
         acc = colormaps.apply_colormap(outputs["accumulation"])

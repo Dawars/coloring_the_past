@@ -73,6 +73,13 @@ Have feature requests? Want to add your brand-spankin'-new NeRF model? Have a ne
 We hope nerfstudio enables you to build faster :hammer: learn together :books: and contribute to our NeRF community :sparkling_heart:.
 
 # Updates
+
+**2023.06.16**: Add `bakedangelo` which combines `BakedSDF` with numerical gridents and progressive training of `Neuralangelo`.
+
+**2023.06.16**: Add `neus-facto-angelo` which combines `neus-facto` with numerical gridents and progressive training of `Neuralangelo`.
+
+**2023.06.16**: Support [Neuralangelo](https://research.nvidia.com/labs/dir/neuralangelo/).
+
 **2023.03.12**: Support [BakedSDF](https://bakedsdf.github.io/).
 
 **2022.12.28**: Support [Neural RGB-D Surface Reconstruction](https://dazinovic.github.io/neural-rgbd-surface-reconstruction/).
