@@ -420,6 +420,10 @@ method_configs["bakedsdf"] = TrainerConfig(
             "optimizer": AdamOptimizerConfig(lr=1e-2, eps=1e-15),
             "scheduler": NeuSSchedulerConfig(warm_up_end=500, learning_rate_alpha=0.05, max_steps=250000),
         },
+        "field_background": {
+            "optimizer": AdamOptimizerConfig(lr=1e-3, eps=1e-15),
+            "scheduler": NeuSSchedulerConfig(warm_up_end=500, learning_rate_alpha=0.05, max_steps=250000),
+        },
     },
     viewer=ViewerConfig(num_rays_per_chunk=1 << 15),
     vis="viewer",
@@ -479,6 +483,10 @@ method_configs["bakedsdf-mlp"] = TrainerConfig(
         },
         "fields": {
             "optimizer": AdamOptimizerConfig(lr=0.002, eps=1e-15),
+            "scheduler": NeuSSchedulerConfig(warm_up_end=500, learning_rate_alpha=0.05, max_steps=250000),
+        },
+        "field_background": {
+            "optimizer": AdamOptimizerConfig(lr=1e-3, eps=1e-15),
             "scheduler": NeuSSchedulerConfig(warm_up_end=500, learning_rate_alpha=0.05, max_steps=250000),
         },
     },
