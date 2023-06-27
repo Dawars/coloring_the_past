@@ -77,8 +77,8 @@ class GeneralizedDataset(InputDataset):
             image_idx: The image index in the dataset.
         """
         # If all images are the same size, we can just return the image and mask tensors in a regular way
-        if self.all_hw_same:
-            return super().get_data(image_idx)
+        # if self.all_hw_same:  # todo additional data not impe
+        #     return super().get_data(image_idx)
 
         # Otherwise return them in a custom struct
         if image_idx in self.image_cache:
