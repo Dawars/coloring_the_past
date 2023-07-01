@@ -89,6 +89,7 @@ class GeneralizedDataset(InputDataset):
 
         data = {"image_idx": image_idx}
         data["is_gray"] = BasicImages([torch.ones_like(image[..., :1]) * image.shape[-1] == 1])
+        # data["is_gray"] = BasicImages([torch.zeros_like(image[..., :1])])  # uncomment to disable grayscale
         if image.shape[-1] == 1:
             image = image.tile(1, 1, 3)
         data["image"] = BasicImages([image])
