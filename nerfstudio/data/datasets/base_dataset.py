@@ -69,16 +69,20 @@ class InputDataset(Dataset):
             newsize = (int(width * self.scale_factor), int(height * self.scale_factor))
             pil_image = pil_image.resize(newsize, resample=Image.BILINEAR)
         image = np.array(pil_image, dtype="uint8")  # shape is (h, w) or (h, w, 3 or 4)
+        # if 3 channel gray
+        if np.allclose(image[..., 0], image[..., 1]) and np.allclose(image[..., 0], image[..., 2]):
+            image = image[..., :1]
+
         if len(image.shape) == 2:
-            image = image[:, :, None].repeat(3, axis=2)
+            image = np.expand_dims(image, -1)  # (h, w, 1)
 
         assert len(image.shape) == 3
         assert image.dtype == np.uint8
-        assert image.shape[2] in [3, 4], f"Image shape of {image.shape} is in correct."
+        assert image.shape[2] in [1, 3, 4], f"Image shape of {image.shape} is in correct."
         return image
 
     def get_image(self, image_idx: int) -> TensorType["image_height", "image_width", "num_channels"]:
-        """Returns a 3 channel image.
+        """Returns an image.  (could be 1 or 3 channel)
 
         Args:
             image_idx: The image index in the dataset.

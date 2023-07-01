@@ -88,6 +88,9 @@ class GeneralizedDataset(InputDataset):
             self.image_cache[image_idx] = image
 
         data = {"image_idx": image_idx}
+        data["is_gray"] = BasicImages([torch.ones_like(image[..., :1]) * image.shape[-1] == 1])
+        if image.shape[-1] == 1:
+            image = image.tile(1, 1, 3)
         data["image"] = BasicImages([image])
         for key, data_func_dict in self._dataparser_outputs.metadata.items():
             if isinstance(data_func_dict, dict) and "func" in data_func_dict:

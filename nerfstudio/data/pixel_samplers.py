@@ -146,7 +146,7 @@ class PixelSampler:  # pylint: disable=too-few-public-methods
         all_indices = []
         all_image_fields = defaultdict(list)
 
-        image_keys = ['image', 'fg_mask', 'normal_image', 'depth_image']
+        image_keys = ['image', 'fg_mask', 'normal_image', 'depth_image', 'is_gray']
         if "mask" in batch:
             num_rays_in_batch = num_rays_per_batch // num_images
             for i in range(num_images):
