@@ -145,6 +145,8 @@ class Heritage(DataParser):
             self.img_ids = []
             self.image_paths = {}  # {id: filename}
             for filename in list(self.files['filename']):
+                if filename not in img_path_to_id:
+                    continue
                 id_ = img_path_to_id[filename]
                 self.image_paths[id_] = filename
                 self.img_ids += [id_]
