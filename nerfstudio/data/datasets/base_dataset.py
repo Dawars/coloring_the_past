@@ -70,7 +70,7 @@ class InputDataset(Dataset):
             pil_image = pil_image.resize(newsize, resample=Image.BILINEAR)
         image = np.array(pil_image, dtype="uint8")  # shape is (h, w) or (h, w, 3 or 4)
         # if 3 channel gray
-        if np.allclose(image[..., 0], image[..., 1]) and np.allclose(image[..., 0], image[..., 2]):
+        if len(image.shape) == 3 and np.allclose(image[..., 0], image[..., 1]) and np.allclose(image[..., 0], image[..., 2]):
             image = image[..., :1]
 
         if len(image.shape) == 2:
