@@ -190,11 +190,12 @@ class NeuSFactoModel(NeuSModel):
     def get_loss_dict(self, outputs, batch, metrics_dict=None):
         # convert output to grayscale if input image is grayscale
         grayscale = batch["is_gray"][:, 0]
-        rgb2gray = outputs["rgb"][grayscale][:, 0] * 0.2989 + \
-                   outputs["rgb"][grayscale][:, 1] * 0.5870 + \
-                   outputs["rgb"][grayscale][:, 2] * 0.1140
+        if grayscale.any():
+            rgb2gray = outputs["rgb"][grayscale][:, 0] * 0.2989 + \
+                       outputs["rgb"][grayscale][:, 1] * 0.5870 + \
+                       outputs["rgb"][grayscale][:, 2] * 0.1140
 
-        outputs["rgb"][grayscale] = rgb2gray.unsqueeze(-1)
+            outputs["rgb"][grayscale] = rgb2gray.unsqueeze(-1)
 
         loss_dict = super().get_loss_dict(outputs, batch, metrics_dict)
 
