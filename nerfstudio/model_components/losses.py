@@ -314,13 +314,15 @@ def monosdf_normal_loss(normal_pred: torch.Tensor, normal_gt: torch.Tensor, mask
         normal_gt (torch.Tensor): monocular normal
         mask (torch.Tensor): mask
     """
+    length = torch.norm(normal_gt, keepdim=True, dim=1).min()
+    mask = (length < 0.5).bool()
     normal_gt = torch.nn.functional.normalize(normal_gt, p=2, dim=-1)
     normal_pred = torch.nn.functional.normalize(normal_pred, p=2, dim=-1)
     l1 = torch.abs(normal_pred - normal_gt).sum(dim=-1).mean()
-    cos = (1.0 - torch.linalg.vecdot(normal_pred, (normal_gt * mask), dim=-1)).mean()
+    # cos = (1.0 - torch.linalg.vecdot(normal_pred, (normal_gt * mask), dim=-1)).mean()
     # cos = (1.0 - torch.linalg.vecdot(normal_pred, normal_gt * mask, dim=-1)).mean()
 
-    # cos = (1.0 - torch.sum(normal_pred * normal_gt, dim=-1)).mean()
+    cos = (1.0 - torch.sum(normal_pred * normal_gt, dim=-1) * mask).mean()
     return l1 + cos
 
 

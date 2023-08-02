@@ -132,7 +132,7 @@ def get_normal_image_from_path(
     rot = camera_to_world[:3, :3].clone()
 
     normal_map = normal.reshape(3, -1)
-    normal_map = torch.nn.functional.normalize(normal_map, p=2, dim=0)
+    # normal_map = torch.nn.functional.normalize(normal_map, p=2, dim=0)
 
     normal_map = rot @ normal_tr @ normal_map
     normal_map = normal_map.permute(1, 0).reshape(h, w, 3)
