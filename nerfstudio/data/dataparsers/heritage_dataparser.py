@@ -24,6 +24,7 @@ import numpy as np
 import torch
 import pandas as pd
 import yaml
+from matplotlib import pyplot as plt
 from rich.progress import Console, track
 from typing_extensions import Literal
 
@@ -168,6 +169,8 @@ class Heritage(DataParser):
             pts3d_array[pts_id, :3] = torch.from_numpy(pts.xyz)
             error_array[pts_id, 0] = torch.from_numpy(pts.error)
 
+        plt.scatter(*pts3d_array[:, [0, 2]].T, s=1)
+        plt.show()
         # determine mask extension
         mask_ext = ".npy" if list((self.data / "masks").glob("*.npy")) else ".png"
 
@@ -186,9 +189,9 @@ class Heritage(DataParser):
         fg_masks = []
         sparse_pts = []
 
-        flip = torch.eye(3)
-        flip[0, 0] = -1.0
-        flip = flip.double()
+        # flip = torch.eye(3)
+        # flip[0, 0] = -1.0
+        # flip = flip.double()
 
         for filename in file_list:
             if filename not in img_path_to_id.keys():
@@ -221,6 +224,11 @@ class Heritage(DataParser):
             semantic = np.load(semantic_filenames[-1])["arr_0"]  # todo semantic mask???
             is_sky = semantic != 2  # sky id is 2
             fg_masks.append(torch.from_numpy(is_sky).unsqueeze(-1))  # todo fg_mask
+
+            # gt sky mask for psnr eval
+            # mask = cv2.imread(str(Path("/home/dawars/projects/master_thesis/NeuralRecon-W/output") / img.name.replace(".jpg", ".jpg_mask.png")))
+            # mask = mask.astype(np.bool)
+            # fg_masks.append(torch.from_numpy(mask))
 
             # load sparse 3d points for each view
             # visualize pts3d for each image
@@ -297,20 +305,20 @@ class Heritage(DataParser):
         scale = 1.0 / (radius * 1.01)
         origin = np.array(scene_config["origin"]).reshape(1, 3)
         origin = torch.from_numpy(origin)
-        poses[:, :3, 3] -= origin
+        # poses[:, :3, 3] -= origin
         poses[:, :3, 3] *= scale  # enlarge the radius a little bit
 
-        poses, transform = camera_utils.auto_orient_and_center_poses(
-            poses,
-            method=self.config.orientation_method,
-            center_poses=False,
-        )
+        # poses, transform = camera_utils.auto_orient_and_center_poses(
+        #     poses,
+        #     method=self.config.orientation_method,
+        #     center_poses=False,
+        # )
 
-        # scale pts accordingly
+        # scale pts accordingly  # todo commented out for depth scale calc, breaks dto
         for pts in sparse_pts:
-            pts[:, :3] -= origin
+            # pts[:, :3] -= origin
             pts[:, :3] *= scale  # should be the same as pose preprocessing
-            pts[:, :3] = pts[:, :3] @ transform[:3, :3].t() + transform[:3, 3:].t()
+        #     pts[:, :3] = pts[:, :3] @ transform[:3, :3].t() + transform[:3, 3:].t()
 
         # create occupancy grid from sparse points
         points_ori = []
@@ -337,9 +345,9 @@ class Heritage(DataParser):
         points_ori = torch.from_numpy(points_ori).float()
 
         # scale pts accordingly
-        points_ori -= origin
+        # points_ori -= origin
         points_ori[:, :3] *= scale  # should be the same as pose preprocessing
-        points_ori[:, :3] = points_ori[:, :3] @ transform[:3, :3].t() + transform[:3, 3:].t()
+        # points_ori[:, :3] = points_ori[:, :3] @ transform[:3, :3].t() + transform[:3, 3:].t()
 
         print(points_ori.shape)
 
@@ -367,14 +375,14 @@ class Heritage(DataParser):
         voxel_size = 2.0 / grid_size
         quantified_points = torch.floor((filtered_points + 1.0) * grid_size // 2)
 
-        index = quantified_points[:, 0] * grid_size**2 + quantified_points[:, 1] * grid_size + quantified_points[:, 2]
+        index = quantified_points[:, 0] * grid_size ** 2 + quantified_points[:, 1] * grid_size + quantified_points[:, 2]
 
         offset = torch.linspace(-1.0 + voxel_size / 2.0, 1.0 - voxel_size / 2.0, grid_size)
         x, y, z = torch.meshgrid(offset, offset, offset, indexing="ij")
         offset_cube = torch.stack([x, y, z], dim=-1).reshape(-1, 3)
 
         # xyz
-        mask = torch.zeros(grid_size**3, dtype=torch.bool)
+        mask = torch.zeros(grid_size ** 3, dtype=torch.bool)
         mask[index.long()] = True
 
         points_valid = offset_cube[mask]
@@ -441,7 +449,7 @@ class Heritage(DataParser):
 
         if self.config.include_mono_prior:
             metadata["depth_filenames"] = depth_filenames
-            metadata["depth_unit_scale_factor"] = 1e-3  # todo add config and optimize in model option
+            metadata["depth_unit_scale_factor"] = 1
 
             metadata["normal_filenames"] = normal_filenames
 
@@ -451,7 +459,7 @@ class Heritage(DataParser):
             scene_box=scene_box,
             mask_filenames=mask_filenames,
             metadata=metadata,
-            dataparser_transform=transform,  # origin substraction not included
+            # dataparser_transform=transform,  # origin subtraction not included
             dataparser_scale=scale,
         )
 
