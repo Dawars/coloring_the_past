@@ -169,8 +169,6 @@ class Heritage(DataParser):
             pts3d_array[pts_id, :3] = torch.from_numpy(pts.xyz)
             error_array[pts_id, 0] = torch.from_numpy(pts.error)
 
-        plt.scatter(*pts3d_array[:, [0, 2]].T, s=1)
-        plt.show()
         # determine mask extension
         mask_ext = ".npy" if list((self.data / "masks").glob("*.npy")) else ".png"
 
@@ -308,13 +306,13 @@ class Heritage(DataParser):
         # poses[:, :3, 3] -= origin
         poses[:, :3, 3] *= scale  # enlarge the radius a little bit
 
-        poses_, transform = camera_utils.auto_orient_and_center_poses(
+        poses, transform = camera_utils.auto_orient_and_center_poses(
             poses,
             method=self.config.orientation_method,
             center_poses=self.config.center_poses,
         )
 
-        # scale pts accordingly  # todo commented out for depth scale calc, breaks dto
+        # scale pts accordingly
         for pts in sparse_pts:
             # pts[:, :3] -= origin
             pts[:, :3] *= scale  # should be the same as pose preprocessing

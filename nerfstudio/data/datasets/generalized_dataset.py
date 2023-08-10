@@ -144,6 +144,7 @@ class GeneralizedDataset(InputDataset):
             # plt.scatter(*(pts2d[:, [1,2]]).T, s=1, c=pts2d[:,0]);plt.colorbar();plt.show();plt.close()            # y, z
 
             # world space colmap but up dir changed
+            # invert auto orient using transform
             rot1 = self._dataparser_outputs.dataparser_transform[:, :3]
             tr1 = self._dataparser_outputs.dataparser_transform[:, 3]
             pts2d[:, :3] = pts2d[:, :3] @ rot1 - rot1.T @ tr1
@@ -162,6 +163,9 @@ class GeneralizedDataset(InputDataset):
 
             plt.gca().set_aspect('equal', adjustable='box')
             plt.scatter(*(pts2d[:, :2]).T,  c=pts2d[:,2], s=1);plt.colorbar();plt.show();plt.close()
+            # invert auto orient using transform
+            camera_to_world[:, 3] = rot1.T @ camera_to_world[:, 3] - rot1.T @ tr1
+            camera_to_world[:, :3] = rot1.T @ camera_to_world[:, :3]
 
             # camera space
             camera_to_world[:, 3] /= self._dataparser_outputs.dataparser_scale
