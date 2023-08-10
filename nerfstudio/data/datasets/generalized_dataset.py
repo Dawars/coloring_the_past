@@ -195,12 +195,8 @@ class GeneralizedDataset(InputDataset):
                                  ])
             pts2d_proj = pts2d_proj[:, [0, 1, 2]] @ proj.T
 
-            plt.imshow((mask & fg_mask).cpu().float().numpy()[..., 0])
-            plt.scatter(*(pts2d_proj[:, :2]).T, s=1)
-            plt.show()
-            plt.close()
-
-            del data["mask_image"]
+            filter = (pts2d_proj[:, 0] < width) & (pts2d_proj[:, 0] >= 0) & (pts2d_proj[:, 1] < height) & (pts2d_proj[:, 1] >= 0)
+            pts2d_proj = pts2d_proj[filter]
 
             # Scale depth images to meter units and also by scaling applied to cameras
             # scale_factor = self.depth_unit_scale_factor * self._dataparser_outputs.dataparser_scale
