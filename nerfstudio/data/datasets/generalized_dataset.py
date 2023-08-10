@@ -164,7 +164,6 @@ class GeneralizedDataset(InputDataset):
             plt.scatter(*(pts2d[:, :2]).T,  c=pts2d[:,2], s=1);plt.colorbar();plt.show();plt.close()
 
             # camera space
-            # camera_to_world[:, 1:3] *= -1
             camera_to_world[:, 3] /= self._dataparser_outputs.dataparser_scale
             rot = camera_to_world[:, :3]
             tr = camera_to_world[:, 3]
@@ -174,7 +173,7 @@ class GeneralizedDataset(InputDataset):
             plt.scatter(*(pts2d[:, [0, 1]]).T, c=pts2d[:,2], s=1);plt.colorbar();plt.title("ortho xy");plt.show();plt.close()
             # pts2d = pts2d[pts2d[:, 2] < 0]
 
-
+            pts2d[:, 1:3] *= -1
 
             # z division/project
             pts2d_proj = pts2d / pts2d[:, 2:3]
