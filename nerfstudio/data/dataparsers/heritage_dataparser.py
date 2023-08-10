@@ -308,17 +308,17 @@ class Heritage(DataParser):
         # poses[:, :3, 3] -= origin
         poses[:, :3, 3] *= scale  # enlarge the radius a little bit
 
-        # poses, transform = camera_utils.auto_orient_and_center_poses(
-        #     poses,
-        #     method=self.config.orientation_method,
-        #     center_poses=False,
-        # )
+        poses_, transform = camera_utils.auto_orient_and_center_poses(
+            poses,
+            method=self.config.orientation_method,
+            center_poses=self.config.center_poses,
+        )
 
         # scale pts accordingly  # todo commented out for depth scale calc, breaks dto
         for pts in sparse_pts:
             # pts[:, :3] -= origin
             pts[:, :3] *= scale  # should be the same as pose preprocessing
-        #     pts[:, :3] = pts[:, :3] @ transform[:3, :3].t() + transform[:3, 3:].t()
+            pts[:, :3] = pts[:, :3] @ transform[:3, :3].t() + transform[:3, 3:].t()  # transpose because from right
 
         # create occupancy grid from sparse points
         points_ori = []
@@ -459,7 +459,7 @@ class Heritage(DataParser):
             scene_box=scene_box,
             mask_filenames=mask_filenames,
             metadata=metadata,
-            # dataparser_transform=transform,  # origin subtraction not included
+            dataparser_transform=transform,  # origin subtraction not included
             dataparser_scale=scale,
         )
 

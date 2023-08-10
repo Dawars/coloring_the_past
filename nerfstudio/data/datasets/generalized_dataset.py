@@ -144,9 +144,9 @@ class GeneralizedDataset(InputDataset):
             # plt.scatter(*(pts2d[:, [1,2]]).T, s=1, c=pts2d[:,0]);plt.colorbar();plt.show();plt.close()            # y, z
 
             # world space colmap but up dir changed
-            # transform = torch.eye(4)
-            # transform[:3, :] = self._dataparser_outputs.dataparser_transform
-            # pts2d = pts2d @ transform
+            rot1 = self._dataparser_outputs.dataparser_transform[:, :3]
+            tr1 = self._dataparser_outputs.dataparser_transform[:, 3]
+            pts2d[:, :3] = pts2d[:, :3] @ rot1 - rot1.T @ tr1
 
             # world space (scaling, shifted origin)
             # plt.scatter(*(pts2d[:, :2]).T);plt.show();plt.close()
@@ -165,9 +165,9 @@ class GeneralizedDataset(InputDataset):
 
             # camera space
             camera_to_world[:, 3] /= self._dataparser_outputs.dataparser_scale
-            rot = camera_to_world[:, :3]
-            tr = camera_to_world[:, 3]
-            pts2d = pts2d[:, :3] @ rot.T - rot.T @ tr
+            rot2 = camera_to_world[:, :3]
+            tr2 = camera_to_world[:, 3]
+            pts2d = pts2d[:, :3] @ rot2.T - rot2.T @ tr2
 
             plt.gca().set_aspect('equal', adjustable='box')
             plt.scatter(*(pts2d[:, [0, 1]]).T, c=pts2d[:,2], s=1);plt.colorbar();plt.title("ortho xy");plt.show();plt.close()
