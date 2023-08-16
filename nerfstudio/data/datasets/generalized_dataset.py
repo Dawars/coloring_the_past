@@ -198,10 +198,13 @@ class GeneralizedDataset(InputDataset):
             filter = (pts2d_proj[:, 0] < width) & (pts2d_proj[:, 0] >= 0) & (pts2d_proj[:, 1] < height) & (pts2d_proj[:, 1] >= 0)
             pts2d_proj = pts2d_proj[filter]
 
-            # Scale depth images to meter units and also by scaling applied to cameras
-            # scale_factor = self.depth_unit_scale_factor * self._dataparser_outputs.dataparser_scale
+            mask = mask & fg_mask
+            mask_points = mask[..., 0][pts2d_proj.long()[:, [1, 0]].chunk(chunks=2, dim=1)][:, 0]
+
+            # projected x, y points and camera space depth
+            pts_proj_depth = torch.cat((pts2d_proj[:, :2], pts2d[filter, 2:3]), dim=1)[mask_points]
             depth_image = get_depth_image_from_path(
-                filepath=depth_filepath, height=height, width=width, sparse_pts=pts2d[:, :2], mask=mask & fg_mask
+                filepath=depth_filepath, height=height, width=width, sparse_pts=pts_proj_depth
             )
 
             metadata["depth_image"] = BasicImages([depth_image])

@@ -20,6 +20,7 @@ import cv2
 import numpy as np
 import torch
 from PIL import Image
+import matplotlib.pyplot as plt
 from torchtyping import TensorType
 
 
@@ -47,7 +48,7 @@ def get_image_mask_tensor_from_path(filepath: Path, scale_factor: float = 1.0) -
 
 
 def get_semantics_and_mask_tensors_from_path(
-    filepath: Path, mask_indices: Union[List, torch.Tensor], scale_factor: float = 1.0
+        filepath: Path, mask_indices: Union[List, torch.Tensor], scale_factor: float = 1.0
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     """
     Utility function to read segmentation from the given filepath
@@ -66,11 +67,12 @@ def get_semantics_and_mask_tensors_from_path(
 
 
 def get_depth_image_from_path(
-    filepath: Path,
-    height: int,
-    width: int,
-    scale_factor: float,
-    interpolation: int = cv2.INTER_NEAREST,
+        filepath: Path,
+        height: int,
+        width: int,
+        scale_factor: float = 1.0,
+        sparse_pts: np.ndarray = None,
+        interpolation: int = cv2.INTER_NEAREST,
 ) -> torch.Tensor:
     """Loads, rescales and resizes depth images.
     Filepath points to a 16-bit or 32-bit depth image, or a numpy array `*.npy`.
@@ -80,27 +82,52 @@ def get_depth_image_from_path(
         height: Target depth image height.
         width: Target depth image width.
         scale_factor: Factor by which to scale depth image.
+        sparse_pts: sparse pcd from this camera
+        mask: bg and voxel mask
         interpolation: Depth value interpolation for resizing.
 
     Returns:
         Depth image torch tensor with shape [width, height, 1].
     """
     if filepath.suffix == ".npy":
-        image = np.load(filepath) * scale_factor
+        image = np.load(filepath)
         image = cv2.resize(image, (width, height), interpolation=interpolation)
     else:
         image = cv2.imread(str(filepath.absolute()), cv2.IMREAD_ANYDEPTH)
-        image = image.astype(np.float64) * scale_factor
+        image = image.astype(np.float64)
         image = cv2.resize(image, (width, height), interpolation=interpolation)
-    return torch.from_numpy(image[:, :, np.newaxis])
+
+    image = image * scale_factor
+    image = torch.from_numpy(image[:, :, np.newaxis])
+
+    if sparse_pts is not None:
+        # sample depth by points
+
+        coords, depth_gt = sparse_pts.long()[:, [1, 0]].chunk(chunks=2, dim=1), sparse_pts[:, 2:3]
+        depth_pred = image[coords][..., 0]
+
+        plt.imshow(image[..., 0])
+        plt.scatter(*(sparse_pts[:, :2]).T, s=1, c=sparse_pts[:, 2])
+        plt.title("before")
+        plt.colorbar()
+        plt.show()
+
+        depth_gt *= -1  # depth grows forwards
+        # scale * depth_pred + offset * 1 - depth_gt = 0
+        Sb = torch.linalg.lstsq(torch.cat((depth_pred, torch.ones_like(depth_pred)), dim=1), depth_gt).solution
+        # *-1 to fix visualization
+        image = image * max(0, Sb[0]) + Sb[1]  # todo check constrained inequality
+
+
+    return image
 
 
 def get_normal_image_from_path(
-    filepath: Path,
-    height: int,
-    width: int,
-    camera_to_world: TensorType[3, 4],
-    interpolation: int = cv2.INTER_NEAREST,
+        filepath: Path,
+        height: int,
+        width: int,
+        camera_to_world: TensorType[3, 4],
+        interpolation: int = cv2.INTER_NEAREST,
 ) -> torch.Tensor:
     """Loads, rescales and resizes depth images.
     Filepath points to a numpy array `*.npy` of floats in the range of [0., 1.].
