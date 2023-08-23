@@ -18,6 +18,7 @@ from typing import List, Tuple, Union
 
 import cv2
 import numpy as np
+import scipy
 import torch
 from PIL import Image
 import matplotlib.pyplot as plt
@@ -114,7 +115,12 @@ def get_depth_image_from_path(
 
         depth_gt *= -1  # depth grows forwards
         # scale * depth_pred + offset * 1 - depth_gt = 0
-        Sb = torch.linalg.lstsq(torch.cat((depth_pred, torch.ones_like(depth_pred)), dim=1), depth_gt).solution
+        D = torch.cat((depth_pred, torch.ones_like(depth_pred)), dim=1)
+        # Sb = torch.linalg.lstsq(D, depth_gt).solution
+        res = scipy.optimize.lsq_linear(D, depth_gt.squeeze().double(), bounds=([0, -np.inf], [np.inf, np.inf]))
+        Sb = res.x
+        # todo add weights by area
+        image = image * Sb[0] + Sb[1]
         # *-1 to fix visualization
         image = image * max(0, Sb[0]) + Sb[1]  # todo check constrained inequality
 
