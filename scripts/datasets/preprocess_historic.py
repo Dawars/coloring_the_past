@@ -41,4 +41,4 @@ for url in Path(image_dir).glob("*.jpg"):
 
     image.thumbnail((2000, 2000))
 
-    image.save(out_dir / url.name)
+    image.save(out_dir / url.name, quality=100)
