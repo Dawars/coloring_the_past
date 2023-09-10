@@ -25,7 +25,7 @@ from typing import Dict, List, Tuple, Type
 import torch
 import torch.nn.functional as F
 from torch.nn import Parameter
-from torchmetrics import PeakSignalNoiseRatio
+from torchmetrics.image import PeakSignalNoiseRatio
 from torchmetrics.functional import structural_similarity_index_measure
 from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
 from torchtyping import TensorType
@@ -47,6 +47,7 @@ from nerfstudio.model_components.losses import (
     SensorDepthLoss,
     compute_scale_and_shift,
     monosdf_normal_loss,
+    S3IM,
 )
 from nerfstudio.model_components.patch_warping import PatchWarping
 from nerfstudio.model_components.ray_samplers import LinearDisparitySampler
@@ -111,6 +112,16 @@ class SurfaceModelConfig(ModelConfig):
     """sparse point sdf loss multiplier"""
     dense_points_sdf_loss_mult: float = 0.0
     """dense point sdf loss multiplier"""
+    s3im_loss_mult: float = 0.0
+    """S3IM loss multiplier."""
+    s3im_kernel_size: int = 4
+    """S3IM kernel size."""
+    s3im_stride: int = 4
+    """S3IM stride."""
+    s3im_repeat_time: int = 10
+    """S3IM repeat time."""
+    s3im_patch_height: int = 32
+    """S3IM virtual patch height."""
     sdf_field: SDFFieldConfig = SDFFieldConfig()
     """Config for SDF Field"""
     background_model: Literal["grid", "mlp", "none"] = "mlp"
@@ -150,7 +161,6 @@ class SurfaceModel(Model):
             raise ValueError("Invalid scene contraction norm")
 
         self.scene_contraction = SceneContraction(order=order)
-
         # Can we also use contraction for sdf?
         # Fields
         self.field = self.config.sdf_field.setup(
@@ -221,6 +231,8 @@ class SurfaceModel(Model):
 
         # losses
         self.rgb_loss = L1Loss()
+        self.s3im_loss = S3IM(s3im_kernel_size=self.config.s3im_kernel_size, s3im_stride=self.config.s3im_stride, s3im_repeat_time=self.config.s3im_repeat_time, s3im_patch_height=self.config.s3im_patch_height)
+
         self.eikonal_loss = MSELoss()
         self.depth_loss = ScaleAndShiftInvariantLoss(alpha=0.5, scales=1)
         self.patch_loss = MultiViewLoss(
@@ -333,8 +345,9 @@ class SurfaceModel(Model):
         accumulation = self.renderer_accumulation(weights=weights)
 
         # background model
-        if self.config.background_model != "none" and self.training:
-            # TODO remove hard-coded far value
+        if self.config.background_model != "none" and "bg_transmittance" in samples_and_field_outputs:
+            bg_transmittance = samples_and_field_outputs["bg_transmittance"]
+
             # sample inversely from far to 1000 and points and forward the bg model
             ray_bundle.nears = ray_bundle.fars
             ray_bundle.fars = torch.ones_like(ray_bundle.fars) * self.config.far_plane_bg
@@ -448,6 +461,9 @@ class SurfaceModel(Model):
             # eikonal loss
             grad_theta = outputs["eik_grad"]
             loss_dict["eikonal_loss"] = ((grad_theta.norm(2, dim=-1) - 1) ** 2).mean() * self.config.eikonal_loss_mult
+            # s3im loss
+            if self.config.s3im_loss_mult > 0:
+                loss_dict["s3im_loss"] = self.s3im_loss(image, outputs["rgb"]) * self.config.s3im_loss_mult
 
             # 0 for sky, 1 else
             sky_mask = (batch["fg_mask"] if "fg_mask" in batch else torch.tensor(1)).float().to(self.device)
