@@ -5,6 +5,7 @@ from argparse import ArgumentParser
 from pathlib import Path
 
 from PIL import Image, ImageOps
+from PIL.Image import Resampling
 
 color_list = [
     "C_ROB19610907002.jpg",
@@ -29,16 +30,24 @@ parser.add_argument("--img-dir", type=Path, required=True, help="source image fo
 parser.add_argument("--out-dir", type=Path, required=True, help="output folder for processed images")
 args = parser.parse_args()
 
+
+def get_files(root: Path, extensions):
+    all_files = []
+    for ext in extensions:
+        all_files.extend(Path(root).glob(ext))
+    return all_files
+
+
 image_dir = args.img_dir
 out_dir = args.out_dir
 out_dir.mkdir(exist_ok=True)
-for url in Path(image_dir).glob("*.jpg"):
+for url in get_files(Path(image_dir), ("*.jpg", "*.JPG", "*.jpeg", "*.JPEG", "*.png", "*.PNG")):
     image = Image.open(url)
     image = ImageOps.exif_transpose(image)
 
     if url.name not in color_list:
         image = image.convert("L")
 
-    image.thumbnail((2000, 2000))
+    image.thumbnail((1600, 1600), resample=Resampling.LANCZOS)
 
     image.save(out_dir / url.name, quality=100)
