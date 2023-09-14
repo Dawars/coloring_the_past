@@ -50,4 +50,4 @@ for url in get_files(Path(image_dir), ("*.jpg", "*.JPG", "*.jpeg", "*.JPEG", "*.
 
     image.thumbnail((1600, 1600), resample=Resampling.LANCZOS)
 
-    image.save(out_dir / url.name, quality=100)
+    image.save(out_dir / url.with_suffix(".jpg").name, quality=100)
