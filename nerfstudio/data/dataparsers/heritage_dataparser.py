@@ -134,7 +134,7 @@ class Heritage(DataParser):
 
         img_path_to_id = {}
         file_list = []
-        image_list = list(self.data.glob(f"*{self.config.setting}*.tsv"))
+        image_list = list(self.data.glob(f"*_{self.config.setting}.tsv"))
         if image_list:
             CONSOLE.status(f"Found .tsv file for image list {image_list[0]}")
             self.files = pd.read_csv(image_list[0], sep="\t")
