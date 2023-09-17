@@ -115,7 +115,8 @@ class Heritage(DataParser):
     # pylint: disable=too-many-statements
     def _generate_dataparser_outputs(self, split="train"):
 
-        config_path = self.data / "config.yaml"
+        setting_suffix = '' if self.config.setting == '' else f'_{self.config.setting}'
+        config_path = self.data / f"config{setting_suffix}.yaml"
 
         with open(config_path, "r") as yamlfile:
             scene_config = yaml.load(yamlfile, Loader=yaml.FullLoader)
@@ -134,7 +135,7 @@ class Heritage(DataParser):
 
         img_path_to_id = {}
         file_list = []
-        image_list = list(self.data.glob(f"*{self.config.setting}.tsv"))
+        image_list = list(self.data.glob(f"*{setting_suffix}.tsv"))
         if image_list:
             CONSOLE.status(f"Found .tsv file for image list {image_list[0]}")
             self.files = pd.read_csv(image_list[0], sep="\t")
