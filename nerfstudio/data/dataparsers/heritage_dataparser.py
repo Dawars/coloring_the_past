@@ -93,6 +93,8 @@ class HeritageDataParserConfig(DataParserConfig):
     """Whether to center the poses."""
     skip_every_for_train_split: int = 1
     """sub sampling train images"""
+    setting: str = ""
+    """Choose tsv file which contains subset of images, e.g: all, clean, facade"""
 
 
 @dataclass
@@ -132,7 +134,7 @@ class Heritage(DataParser):
 
         img_path_to_id = {}
         file_list = []
-        image_list = list(self.data.glob("*.tsv"))
+        image_list = list(self.data.glob(f"*{self.config.setting}*.tsv"))
         if image_list:
             CONSOLE.status(f"Found .tsv file for image list {image_list[0]}")
             self.files = pd.read_csv(image_list[0], sep="\t")
@@ -192,6 +194,7 @@ class Heritage(DataParser):
 
         for filename in file_list:
             if filename not in img_path_to_id.keys():
+                print(f"image {filename} not found in sfm result!!")
                 print(f"image {filename} not found in sfm result!!")
                 continue
             _id = img_path_to_id[filename]
