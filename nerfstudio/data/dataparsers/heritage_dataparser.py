@@ -138,7 +138,7 @@ class Heritage(DataParser):
         file_list = []
         image_list = list(self.data.glob(f"*{setting_suffix}.tsv"))
         if image_list:
-            CONSOLE.status(f"Found .tsv file for image list {image_list[0]}")
+            print(f"Found .tsv file for image list {image_list[0]}")
             self.files = pd.read_csv(image_list[0], sep="\t")
             self.files = self.files[~self.files['id'].isnull()]  # remove data without id
             self.files.reset_index(inplace=True, drop=True)
@@ -260,8 +260,8 @@ class Heritage(DataParser):
         i_eval = [i for i, filename in enumerate(image_filenames)
                   if self.files.loc[i, 'split'] == 'test']
 
-        num_images = len(i_train)
-        num_train_images = math.ceil(num_images * self.config.train_split_percentage)
+        num_train_images = len(i_train)
+        # num_train_images = math.ceil(num_images * self.config.train_split_percentage)
         # num_eval_images = num_images - num_train_images
         # # num_eval_images = 1
         # # num_train_images = num_images - num_eval_images
