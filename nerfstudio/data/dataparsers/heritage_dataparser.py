@@ -117,6 +117,7 @@ class Heritage(DataParser):
 
         setting_suffix = '' if self.config.setting == '' else f'_{self.config.setting}'
         config_path = self.data / f"config{setting_suffix}.yaml"
+        print(f"Config file: {str(config_path)}")
 
         with open(config_path, "r") as yamlfile:
             scene_config = yaml.load(yamlfile, Loader=yaml.FullLoader)
