@@ -189,7 +189,7 @@ class PixelSampler:  # pylint: disable=too-few-public-methods
 
         indices = torch.cat(all_indices, dim=0)
 
-        excluded_keys = image_keys + ["image_idx", "mask", "sparse_pts", ]  # not collated
+        excluded_keys = image_keys + ["image_idx", "mask", "sparse_sfm_points"]  # not collated
 
         c, y, x = (i.flatten() for i in torch.split(indices, 1, dim=-1))
         collated_batch = {
@@ -202,9 +202,9 @@ class PixelSampler:  # pylint: disable=too-few-public-methods
             if len(all_image_fields[key]) > 0:
                 collated_batch[key] = torch.cat(all_image_fields[key], dim=0)
 
-        if "sparse_pts" in batch:
+        if "sparse_sfm_points" in batch:
             rand_idx = random.randint(0, num_images - 1)
-            collated_batch["sparse_pts"] = batch["sparse_pts"][rand_idx]
+            collated_batch["sparse_sfm_points"] = batch["sparse_sfm_points"][rand_idx]
 
         assert collated_batch["image"].shape == (num_rays_per_batch, 3), collated_batch["image"].shape
 

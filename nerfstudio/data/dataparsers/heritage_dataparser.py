@@ -62,7 +62,7 @@ def get_masks(image_idx: int, fg_masks, sparse_pts):
     pts = sparse_pts[image_idx]
     pts = BasicImages([pts])
 
-    return {"fg_mask": fg_mask, "sparse_pts": pts}
+    return {"fg_mask": fg_mask, "sparse_sfm_points": pts}
 
 
 @dataclass
