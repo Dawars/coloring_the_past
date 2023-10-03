@@ -279,7 +279,6 @@ class SurfaceModel(Model):
         field_outputs = samples_and_field_outputs["field_outputs"]
         ray_samples = samples_and_field_outputs["ray_samples"]
         weights = samples_and_field_outputs["weights"]
-        bg_transmittance = samples_and_field_outputs["bg_transmittance"]
 
         rgb = self.renderer_rgb(rgb=field_outputs[FieldHeadNames.RGB], weights=weights)
         depth = self.renderer_depth(weights=weights, ray_samples=ray_samples)
@@ -293,9 +292,11 @@ class SurfaceModel(Model):
         normal = self.renderer_normal(semantics=field_outputs[FieldHeadNames.NORMAL], weights=weights)
         accumulation = self.renderer_accumulation(weights=weights)
 
+        # TODO add a flat to control how the background model are combined with foreground sdf field
         # background model
-        if self.config.background_model != "none":
-            # TODO remove hard-coded far value
+        if self.config.background_model != "none" and "bg_transmittance" in samples_and_field_outputs:
+            bg_transmittance = samples_and_field_outputs["bg_transmittance"]
+
             # sample inversely from far to 1000 and points and forward the bg model
             ray_bundle.nears = ray_bundle.fars
             ray_bundle.fars = torch.ones_like(ray_bundle.fars) * self.config.far_plane_bg
@@ -306,8 +307,6 @@ class SurfaceModel(Model):
             weights_bg = ray_samples_bg.get_weights(field_outputs_bg[FieldHeadNames.DENSITY])
 
             rgb_bg = self.renderer_rgb(rgb=field_outputs_bg[FieldHeadNames.RGB], weights=weights_bg)
-            depth_bg = self.renderer_depth(weights=weights_bg, ray_samples=ray_samples_bg)
-            accumulation_bg = self.renderer_accumulation(weights=weights_bg)
 
             # merge background color to forgound color
             rgb = rgb + bg_transmittance * rgb_bg

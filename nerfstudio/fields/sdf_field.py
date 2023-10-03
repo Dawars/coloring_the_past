@@ -538,7 +538,7 @@ class SDFField(Field):
         if self.config.use_specular_tint:
             tint = self.sigmoid(self.specular_tint_pred(geo_features.view(-1, self.config.geo_feat_dim)))
 
-        normals = F.normalize(gradients, p=2, dim=-1)
+        normals = F.normalize(normals, p=2, dim=-1)
 
         if self.config.use_reflections:
             # https://github.com/google-research/multinerf/blob/5d4c82831a9b94a87efada2eee6a993d530c4226/internal/ref_utils.py#L22
