@@ -129,7 +129,7 @@ class GeneralizedDataset(InputDataset):
                 filepath=depth_filepath, height=height, width=width, scale_factor=scale_factor
             )
 
-            metadata["depth_image"] = BasicImages([depth_image])
+            metadata["sensor_depth"] = BasicImages([depth_image])  # [W, H, 1] ??
 
         if "normal_filenames" in self.metadata:
             normal_filepath = self.metadata["normal_filenames"][image_idx]

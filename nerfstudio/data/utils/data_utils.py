@@ -22,6 +22,8 @@ import torch
 from PIL import Image
 from torchtyping import TensorType
 
+from nerfstudio.data.utils import colmap_utils
+
 
 def get_image_mask_tensor_from_path(filepath: Path, scale_factor: float = 1.0) -> torch.Tensor:
     """
@@ -88,10 +90,12 @@ def get_depth_image_from_path(
     if filepath.suffix == ".npy":
         image = np.load(filepath) * scale_factor
         image = cv2.resize(image, (width, height), interpolation=interpolation)
-    else:
+    elif filepath.suffix == ".png":
         image = cv2.imread(str(filepath.absolute()), cv2.IMREAD_ANYDEPTH)
         image = image.astype(np.float64) * scale_factor
         image = cv2.resize(image, (width, height), interpolation=interpolation)
+    elif filepath.suffix == ".bin":  # colmap dense
+        image = colmap_utils.read_array(filepath) * scale_factor
     return torch.from_numpy(image[:, :, np.newaxis])
 
 
