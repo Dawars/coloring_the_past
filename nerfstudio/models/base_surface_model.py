@@ -486,7 +486,7 @@ class SurfaceModel(Model):
             sensor_depth = batch["sensor_depth"].to(self.device)
             depth_pred = outputs["depth"]
 
-            combined_sensor_depth = torch.cat([sensor_depth[..., None], depth_pred], dim=1)
+            combined_sensor_depth = torch.cat([sensor_depth, depth_pred], dim=1)
             combined_sensor_depth = colormaps.apply_depth_colormap(combined_sensor_depth)
             images_dict["sensor_depth"] = combined_sensor_depth
 
