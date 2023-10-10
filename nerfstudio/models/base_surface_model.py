@@ -483,7 +483,7 @@ class SurfaceModel(Model):
         }
 
         if "sensor_depth" in batch:
-            sensor_depth = batch["sensor_depth"]
+            sensor_depth = batch["sensor_depth"].to(self.device)
             depth_pred = outputs["depth"]
 
             combined_sensor_depth = torch.cat([sensor_depth[..., None], depth_pred], dim=1)

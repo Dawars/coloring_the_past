@@ -124,7 +124,7 @@ class GeneralizedDataset(InputDataset):
             depth_filepath = self.metadata["depth_filenames"][image_idx]
 
             # Scale depth images to meter units and also by scaling applied to cameras
-            scale_factor = self.depth_unit_scale_factor * self._dataparser_outputs.dataparser_scale
+            scale_factor = self.depth_unit_scale_factor / self._dataparser_outputs.dataparser_scale
             depth_image = get_depth_image_from_path(
                 filepath=depth_filepath, height=height, width=width, scale_factor=scale_factor
             )
