@@ -318,4 +318,4 @@ def read_array(path):
             byte = fid.read(1)
         array = np.fromfile(fid, np.float32)
     array = array.reshape((width, height, channels), order="F")
-    return array.squeeze()
+    return np.transpose(array, (1, 0, 2)).squeeze()
