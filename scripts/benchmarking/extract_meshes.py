@@ -52,8 +52,11 @@ def extract_meshes(scene_name: str, simplify=False, resolution=1024):
             ),
             bounding_box_max=(0.5, 0.5, 0.5),
         )
-        extract_mesh.main()
-
+        try:
+            extract_mesh.main()
+        except RuntimeError as e:
+            print(e)
+            continue
         del extract_mesh
 
         if simplify:
