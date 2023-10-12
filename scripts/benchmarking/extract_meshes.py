@@ -18,6 +18,9 @@ def extract_meshes(scene_name: str, simplify=False, resolution=1024):
         ckpt_file = sorted(list(training_path.glob("*.ckpt")))[-1]
         config_file = ckpt_file.parent.with_name("config.yml")
         out_path = config_file.with_name(f"mesh_{resolution}.ply")
+        if out_path.exists():
+            print(f"{training_path} already exists, skipping")
+            continue
 
         data_transform_path = ckpt_file.parent.with_name("dataparser_transforms.json")
 
