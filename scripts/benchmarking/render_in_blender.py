@@ -86,6 +86,7 @@ bproc.init()
 
 def render_scene(scene_name, resolution: int):
     for training_path in ((sdfstudio_dir / "outputs" / scene_name).rglob("./**/nerfstudio_models/")):
+        print(training_path)
         ckpt_file = sorted(list(training_path.glob("*.ckpt")))[-1]
         render_dir = training_path.parent / "renders"
         render_dir.mkdir(exist_ok=True)
@@ -99,7 +100,7 @@ def render_scene(scene_name, resolution: int):
         # bproc.renderer.enable_distance_output(activate_antialiasing=True)
         bproc.renderer.enable_depth_output(activate_antialiasing=False)
 
-        mesh_path = list(ckpt_file.parent.glob(f"*{resolution}_sfm.ply"))[0]
+        mesh_path = list(config_file.parent.glob(f"*{resolution}_sfm.ply"))[0]
         print(f"Loading pcd {mesh_path}")
         pcd = bproc.loader.load_obj(str(mesh_path))
         print("Loading pcd done")
@@ -114,6 +115,7 @@ def render_scene(scene_name, resolution: int):
 
         for v in imdata.values():
             filename = v.name
+            print(filename)
 
             R = v.qvec2rotmat()
             t = v.tvec.reshape(3, 1)
