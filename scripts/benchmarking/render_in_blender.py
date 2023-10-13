@@ -90,7 +90,7 @@ def render_scene(scene_name, resolution: int):
         render_dir = training_path.parent / "renders"
         render_dir.mkdir(exist_ok=True)
         config_file = ckpt_file.parent.with_name("config.yml")
-        config = yaml.load_all(config_file.read_text(), Loader=yaml.SafeLoader)
+        config = yaml.load(config_file.read_text(), Loader=yaml.Loader)
 
         setting = config.pipeline.datamanager.dataparser.setting
         setting_suffix = "" if setting == "" else f"_{setting}"
