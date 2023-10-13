@@ -68,7 +68,7 @@ def extract_meshes(scene_name: str, simplify=False, resolution=1024):
             mesh = trimesh.load_mesh(out_path)
         mesh.apply_transform(np.linalg.inv(transform))
         mesh.apply_scale(1 / scale)
-        mesh.apply_translation(np.array(scene_config["origin"]))  # add back origin
+        mesh.apply_translation(scene_config["origin"][0])  # add back origin
 
         mesh.export(config_file.with_name(f"mesh_{resolution}_sfm.ply"))
         if "sfm2gt" in scene_config:
