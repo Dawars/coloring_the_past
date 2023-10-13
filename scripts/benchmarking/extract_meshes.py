@@ -82,7 +82,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--name", required=True, help="reconstruction name")
-    parser.add_argument("--simplify", default=False, help="Simplify mesh (requires MeshLab)")
+    parser.add_argument("--simplify", type=bool, default=False, help="Simplify mesh (requires MeshLab)")
     parser.add_argument("--resolution", type=int, default=512, help="Grid resolution")
 
     args = parser.parse_args()
