@@ -118,6 +118,8 @@ class SurfaceModelConfig(ModelConfig):
     """Total variational loss mutliplier"""
     overwrite_near_far_plane: bool = False
     """whether to use near and far collider from command line"""
+    color_loss: bool = False
+    """Projecting mlp output to grayscale in rgb loss when input is grayscale"""
 
 
 class SurfaceModel(Model):
@@ -354,6 +356,18 @@ class SurfaceModel(Model):
     def get_loss_dict(self, outputs, batch, metrics_dict=None) -> Dict:
         loss_dict = {}
         image = batch["image"].to(self.device)
+
+        # color loss
+        if self.config.color_loss:
+            # convert output to grayscale if input image is grayscale
+            grayscale = batch["is_gray"][:, 0]
+            if grayscale.any():
+                rgb2gray = outputs["rgb"][grayscale][:, 0] * 0.2989 + \
+                           outputs["rgb"][grayscale][:, 1] * 0.5870 + \
+                           outputs["rgb"][grayscale][:, 2] * 0.1140
+
+                outputs["rgb"][grayscale] = rgb2gray.unsqueeze(-1)
+
         loss_dict["rgb_loss"] = self.rgb_loss(image, outputs["rgb"])
         if self.training:
             # eikonal loss
