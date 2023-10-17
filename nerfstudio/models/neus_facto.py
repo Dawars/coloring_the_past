@@ -89,9 +89,6 @@ class NeuSFactoModel(NeuSModel):
         """Set the fields and modules."""
         super().populate_modules()
 
-        # Neural Reconstruction in the wild use sphere collider so we overwrite it here
-        self.collider = SphereCollider(radius=1.0, soft_intersection=False)
-
         self.density_fns = []
         num_prop_nets = self.config.num_proposal_iterations
         # Build the proposal network(s)
