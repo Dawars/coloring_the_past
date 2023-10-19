@@ -32,6 +32,7 @@ from torchtyping import TensorType
 from typing_extensions import Literal
 
 from nerfstudio.cameras.rays import RayBundle
+from nerfstudio.engine.callbacks import TrainingCallback, TrainingCallbackAttributes, TrainingCallbackLocation
 from nerfstudio.field_components.encodings import NeRFEncoding
 from nerfstudio.field_components.field_heads import FieldHeadNames
 from nerfstudio.field_components.spatial_distortions import SceneContraction
@@ -120,6 +121,8 @@ class SurfaceModelConfig(ModelConfig):
     """whether to use near and far collider from command line"""
     color_loss: bool = False
     """Projecting mlp output to grayscale in rgb loss when input is grayscale"""
+    start_after_step_mono_loss: int = -1
+    """Step to start using mono prior loss at, used to bootstrap proposal network/surface guided sampling"""
 
 
 class SurfaceModel(Model):
@@ -218,6 +221,27 @@ class SurfaceModel(Model):
         self.psnr = PeakSignalNoiseRatio(data_range=1.0)
         self.ssim = structural_similarity_index_measure
         self.lpips = LearnedPerceptualImagePatchSimilarity()
+
+        self.use_mono_loss = False  # only start using mono loss after proposal network is bootstrapped
+
+    def get_training_callbacks(
+        self, training_callback_attributes: TrainingCallbackAttributes
+    ) -> List[TrainingCallback]:
+        callbacks = super().get_training_callbacks(training_callback_attributes)
+
+        # add sampler call backs
+        def callback_fn(step):
+            self.use_mono_loss = (step > self.config.start_after_step_mono_loss)
+
+        callbacks.append(
+            TrainingCallback(
+                where_to_run=[TrainingCallbackLocation.BEFORE_TRAIN_ITERATION],
+                update_every_num_iters=1,
+                func=callback_fn,
+            )
+        )
+
+        return callbacks
 
     def get_param_groups(self) -> Dict[str, List[Parameter]]:
         param_groups = {}
@@ -388,7 +412,7 @@ class SurfaceModel(Model):
                 )
 
             # monocular normal loss
-            if "normal_image" in batch and self.config.mono_normal_loss_mult > 0.0:
+            if "normal_image" in batch and self.config.mono_normal_loss_mult > 0.0 and self.use_mono_loss:
                 normal_gt = batch["normal_image"].to(self.device)
                 normal_pred = outputs["normal"]
                 loss_dict["normal_loss"] = (
@@ -396,7 +420,7 @@ class SurfaceModel(Model):
                 )
 
             # monocular depth loss
-            if "depth_image" in batch and self.config.mono_depth_loss_mult > 0.0:
+            if "depth_image" in batch and self.config.mono_depth_loss_mult > 0.0 and self.use_mono_loss:
                 # TODO check it's true that's we sample from only a single image
                 # TODO only supervised pixel that hit the surface and remove hard-coded scaling for depth
                 depth_gt = batch["depth_image"].to(self.device)[..., None]
@@ -412,7 +436,7 @@ class SurfaceModel(Model):
                 self.config.sensor_depth_l1_loss_mult > 0.0
                 or self.config.sensor_depth_freespace_loss_mult > 0.0
                 or self.config.sensor_depth_sdf_loss_mult > 0.0
-            ):
+            ) and self.use_mono_loss:
                 l1_loss, free_space_loss, sdf_loss = self.sensor_depth_loss(batch, outputs)
 
                 loss_dict["sensor_l1_loss"] = l1_loss * self.config.sensor_depth_l1_loss_mult
@@ -429,7 +453,7 @@ class SurfaceModel(Model):
                 )
 
             # sparse points sdf loss
-            if "sparse_sfm_points" in batch and self.config.sparse_points_sdf_loss_mult > 0.0:
+            if "sparse_sfm_points" in batch and self.config.sparse_points_sdf_loss_mult > 0.0 and self.use_mono_loss:
                 sparse_sfm_points = batch["sparse_sfm_points"].to(self.device)  # Nx3
                 sparse_sfm_points_sdf = self.field.forward_geonetwork(sparse_sfm_points[:, :3])[:, 0].contiguous()
                 #  * sparse_sfm_points[:, 3]
