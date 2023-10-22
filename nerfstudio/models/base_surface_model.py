@@ -425,9 +425,8 @@ class SurfaceModel(Model):
                 # TODO only supervised pixel that hit the surface and remove hard-coded scaling for depth
                 depth_gt = batch["depth_image"].to(self.device)[..., None]
                 depth_pred = outputs["depth"]
-                mask = torch.ones_like(depth_gt).reshape(1, 32, -1).bool()
                 loss_dict["depth_loss"] = (
-                    self.depth_loss(depth_pred.reshape(1, 32, -1), (depth_gt * 50 + 0.5).reshape(1, 32, -1), mask)
+                    self.depth_loss(depth_pred.reshape(1, 32, -1), (depth_gt * 50 + 0.5).reshape(1, 32, -1), sky_mask.bool().reshape(1, 32, -1))
                     * self.config.mono_depth_loss_mult
                 )
 
