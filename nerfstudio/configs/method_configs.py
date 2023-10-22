@@ -596,6 +596,7 @@ method_configs["neusW"] = TrainerConfig(
             ),
         ),
         model=NeuralReconWModelConfig(
+            sdf_field=SDFFieldConfig(num_layers=8, hidden_dim=512, num_layers_color=4),
             background_model="grid", num_samples_outside=4, eikonal_loss_mult=0.0001, eval_num_rays_per_chunk=1 << 10
         ),
     ),
