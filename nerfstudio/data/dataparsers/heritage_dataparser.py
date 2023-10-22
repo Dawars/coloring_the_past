@@ -186,6 +186,7 @@ class Heritage(DataParser):
         mask_filenames = []
         semantic_filenames = []
         depth_filenames = []
+        sensor_filenames = []
         normal_filenames = []
         fg_masks = []
         sparse_pts = []
@@ -219,7 +220,8 @@ class Heritage(DataParser):
             mask_filenames.append(self.data / "masks" / img.name.replace(".jpg", mask_ext))
             semantic_filenames.append(self.data / "semantic_maps" / img.name.replace(".jpg", ".npz"))  # todo change to nerfstudio format
             if self.config.include_mono_prior:
-                depth_filenames.append(self.data / "dense" / "stereo" / "depth_maps" / img.name.replace(".jpg", ".jpg.geometric.bin"))
+                depth_filenames.append(self.data / "depth" / img.name.replace(".jpg", self.config.depth_extension))
+                sensor_filenames.append(self.data / "dense" / "stereo" / "depth_maps" / img.name.replace(".jpg", ".jpg.geometric.bin"))
                 normal_filenames.append(self.data / "normal" / img.name.replace(".jpg", ".npy"))
 
             # load sky segmentation and it's used as foreground mask
@@ -421,6 +423,7 @@ class Heritage(DataParser):
         sparse_pts = [sparse_pts[i] for i in indices]
         if self.config.include_mono_prior:
             depth_filenames = [depth_filenames[i] for i in indices]
+            sensor_filenames = [sensor_filenames[i] for i in indices]
             normal_filenames = [normal_filenames[i] for i in indices]
 
         assert len(cameras) == len(image_filenames)
@@ -445,11 +448,10 @@ class Heritage(DataParser):
         }
 
         if self.config.include_mono_prior:
+            metadata["sensor_filenames"] = sensor_filenames
             metadata["depth_filenames"] = depth_filenames
-            metadata["depth_unit_scale_factor"] = 1  # todo add config and optimize in model option
-
-            # TODO UNCOMMENT NORMAL
-            # metadata["normal_filenames"] = normal_filenames
+            metadata["depth_unit_scale_factor"] = 1
+            metadata["normal_filenames"] = normal_filenames
 
         dataparser_outputs = DataparserOutputs(
             image_filenames=image_filenames,

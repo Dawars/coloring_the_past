@@ -129,7 +129,18 @@ class GeneralizedDataset(InputDataset):
                 filepath=depth_filepath, height=height, width=width, scale_factor=scale_factor
             )
 
-            metadata["depth_image"] = metadata["sensor_depth"] = BasicImages([depth_image])  # [W, H, 1] ??
+            metadata["depth_image"] = BasicImages([depth_image])  # [W, H, 1] ??
+
+        if "sensor_filenames" in self.metadata:
+            sensor_filepath = self.metadata["sensor_filenames"][image_idx]
+
+            # Scale depth images to meter units and also by scaling applied to cameras
+            scale_factor = self.depth_unit_scale_factor
+            depth_image = get_depth_image_from_path(
+                filepath=sensor_filepath, height=height, width=width, scale_factor=scale_factor
+            )
+
+            metadata["sensor_depth"] = BasicImages([depth_image])  # [W, H, 1] ??
 
         if "normal_filenames" in self.metadata:
             normal_filepath = self.metadata["normal_filenames"][image_idx]
