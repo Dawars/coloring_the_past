@@ -75,6 +75,8 @@ class HeritageDataParserConfig(DataParserConfig):
     """Directory specifying location of data."""
     include_mono_prior: bool = False
     """whether or not to include loading of normal """
+    include_sensor_depth: bool = False
+    """whether or not to load sensor depth"""
     depth_extension: str = '.npy'
     """Extension for depth map including dot (.npy or .png usually)"""
     scale_factor: float = 3.0
@@ -448,10 +450,12 @@ class Heritage(DataParser):
         }
 
         if self.config.include_mono_prior:
-            metadata["sensor_filenames"] = sensor_filenames
             metadata["depth_filenames"] = depth_filenames
             metadata["depth_unit_scale_factor"] = 1
             metadata["normal_filenames"] = normal_filenames
+        if self.config.include_sensor_depth:
+            metadata["sensor_filenames"] = sensor_filenames
+            metadata["depth_unit_scale_factor"] = 1
 
         dataparser_outputs = DataparserOutputs(
             image_filenames=image_filenames,
