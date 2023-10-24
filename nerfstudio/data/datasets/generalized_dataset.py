@@ -136,11 +136,20 @@ class GeneralizedDataset(InputDataset):
 
             # Scale depth images to meter units and also by scaling applied to cameras
             scale_factor = self.depth_unit_scale_factor
-            depth_image = get_depth_image_from_path(
+            sensor_image = get_depth_image_from_path(
                 filepath=sensor_filepath, height=height, width=width, scale_factor=scale_factor
             )
 
-            metadata["sensor_depth"] = BasicImages([depth_image])  # [W, H, 1] ??
+            metadata["sensor_depth"] = BasicImages([sensor_image])  # [W, H, 1] ??
+
+        if "sensor_filenames" in self.metadata and "depth_filenames" in self.metadata:
+            # scale depth
+            mask = (sensor_image > 0.0).squeeze()
+            # scale * depth_pred + offset * 1 - depth_gt = 0
+            D = torch.cat((depth_image[mask], torch.ones_like(depth_image[mask])), dim=1)
+            Sb = torch.linalg.lstsq(D, sensor_image[mask]).solution
+
+            metadata["depth_image"] = BasicImages([depth_image * Sb[0] + Sb[1]])  # [W, H, 1] ??
 
         if "normal_filenames" in self.metadata:
             normal_filepath = self.metadata["normal_filenames"][image_idx]
