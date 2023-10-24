@@ -496,7 +496,7 @@ class SurfaceModel(Model):
             scale, shift = compute_scale_and_shift(
                 depth_pred[None], depth_gt[None], depth_gt[None] > 0.0
             )
-            depth_pred = depth_pred * scale + shift
+            # depth_pred = depth_pred * scale + shift
 
             combined_depth = torch.cat([depth_gt, depth_pred], dim=1)
             combined_depth = colormaps.apply_depth_colormap(combined_depth)
