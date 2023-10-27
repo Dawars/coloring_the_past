@@ -105,6 +105,11 @@ def render_scene(scene_name, resolution: int):
         pcd = bproc.loader.load_obj(str(mesh_path))
         print("Loading pcd done")
 
+        # Create a point light next to it
+        light = bproc.types.Light()
+        light.set_location([2, -2, 0])
+        light.set_energy(3000)
+
         # load colmap cameras and visualize as spheres
         camdata = read_cameras_binary(str(data_path / "dense/sparse/cameras.bin"))
         imdata = read_images_binary(str(data_path / "dense/sparse/images.bin"))
