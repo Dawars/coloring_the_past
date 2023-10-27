@@ -147,10 +147,10 @@ def render_scene(scene_name, resolution: int):
 
                 bproc.renderer.enable_normals_output()
 
-                data = bproc.renderer.render(load_keys=["distance", "depth", "normals"], output_key=None)
-
-                save_array_as_image(data["colors"][0], "colors", str(render_dir / f"{filename}_color.png"))
-                save_array_as_image(data["normals"][0], "normals", str(render_dir / f"{filename}_normals.png"))
+                data = bproc.renderer.render(
+                    load_keys={"distance", "depth", "normals", "color"},
+                    output_key="colors",
+                )
 
                 depth_map = data["depth"][0]
                 sky_mask = depth_map != 1e10
@@ -165,6 +165,10 @@ def render_scene(scene_name, resolution: int):
 
                 mask = Image.frombytes(mode="1", size=sky_mask.shape[::-1], data=np.packbits(sky_mask, axis=1))
                 mask.save(str(render_dir / f"{filename}_mask.png"))
+
+                # save_array_as_image(data["diffuse"][0], "diffuse", str(render_dir / f"{filename}_diffuse.png"))
+                save_array_as_image(data["normals"][0], "normals", str(render_dir / f"{filename}_normals.png"))
+                save_array_as_image(data["colors"][0], "colors", str(render_dir / f"{filename}_color.png"))
 
                 # np.save(str(out_dir / f"{filename}_depth.npy"), data["depth"][0])
 
