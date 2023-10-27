@@ -95,7 +95,7 @@ def render_scene(scene_name, resolution: int):
 
         setting = config.pipeline.datamanager.dataparser.setting
         setting_suffix = "" if setting == "" else f"_{setting}"
-        data_path = config.pipeline.datamanager.dataparser.data
+        data_path = sdfstudio_dir / config.pipeline.datamanager.dataparser.data
 
         # bproc.renderer.enable_distance_output(activate_antialiasing=True)
         bproc.renderer.enable_depth_output(activate_antialiasing=False)
