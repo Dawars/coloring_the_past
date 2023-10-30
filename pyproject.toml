@@ -53,6 +53,7 @@ dependencies = [
     "wandb>=0.13.3",
     "xatlas",
     "trimesh",
+    "pyntcloud>=0.3.1",
 ]
 
 [project.urls]

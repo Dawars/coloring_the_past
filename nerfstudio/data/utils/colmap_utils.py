@@ -37,6 +37,7 @@ import os
 import struct
 
 import numpy as np
+from pyntcloud import PyntCloud
 
 CameraModel = collections.namedtuple("CameraModel", ["model_id", "model_name", "num_params"])
 Camera = collections.namedtuple("Camera", ["id", "model", "width", "height", "params"])
@@ -319,3 +320,45 @@ def read_array(path):
         array = np.fromfile(fid, np.float32)
     array = array.reshape((width, height, channels), order="F")
     return np.transpose(array, (1, 0, 2)).squeeze()
+
+
+
+MeshPoint = collections.namedtuple(
+    "MeshingPoint",
+    ["position", "color", "normal", "num_visible_images", "visible_image_idxs"],
+)
+
+
+def read_fused(path_to_fused_ply, path_to_fused_ply_vis):
+    """
+    see: src/mvs/meshing.cc
+        void ReadDenseReconstruction(const std::string& path
+    """
+    assert os.path.isfile(path_to_fused_ply)
+    assert os.path.isfile(path_to_fused_ply_vis)
+
+    point_cloud = PyntCloud.from_file(path_to_fused_ply)
+    xyz_arr = point_cloud.points.loc[:, ["x", "y", "z"]].to_numpy()
+    normal_arr = point_cloud.points.loc[:, ["nx", "ny", "nz"]].to_numpy()
+    color_arr = point_cloud.points.loc[:, ["red", "green", "blue"]].to_numpy()
+
+    with open(path_to_fused_ply_vis, "rb") as fid:
+        num_points = read_next_bytes(fid, 8, "Q")[0]
+        mesh_points = [0] * num_points
+        for i in range(num_points):
+            num_visible_images = read_next_bytes(fid, 4, "I")[0]
+            visible_image_idxs = read_next_bytes(
+                fid,
+                num_bytes=4 * num_visible_images,
+                format_char_sequence="I" * num_visible_images,
+            )
+            visible_image_idxs = np.array(tuple(map(int, visible_image_idxs)))
+            mesh_point = MeshPoint(
+                position=xyz_arr[i],
+                color=color_arr[i],
+                normal=normal_arr[i],
+                num_visible_images=num_visible_images,
+                visible_image_idxs=visible_image_idxs,
+            )
+            mesh_points[i] = mesh_point
+        return mesh_points
