@@ -202,7 +202,7 @@ class PixelSampler:  # pylint: disable=too-few-public-methods
             if len(all_image_fields[key]) > 0:
                 collated_batch[key] = torch.cat(all_image_fields[key], dim=0)
 
-        if "sparse_sfm_points" in batch and collated_batch["sparse_sfm_points"]:
+        if "sparse_sfm_points" in batch and batch["sparse_sfm_points"]:
             collated_batch["sparse_sfm_points"] = random.choice(batch["sparse_sfm_points"])
 
         assert collated_batch["image"].shape == (num_rays_per_batch, 3), collated_batch["image"].shape
