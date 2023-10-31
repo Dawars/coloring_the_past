@@ -461,12 +461,6 @@ class SurfaceModel(Model):
                 #  * sparse_sfm_points[:, 3]
                 loss_dict["sparse_sfm_points_sdf_loss"] = torch.mean(torch.abs(sparse_sfm_points_sdf)) * self.config.sparse_points_sdf_loss_mult
 
-            if "dense_sfm_points" in batch and self.config.dense_points_sdf_loss_mult > 0.0 and self.use_mono_loss:
-                dense_sfm_points = batch["dense_sfm_points"].to(self.device)  # Nx3
-                dense_sfm_points_sdf = self.field.forward_geonetwork(dense_sfm_points[:, :3])[:, 0].contiguous()
-                #  * dense_sfm_points[:, 3]
-                loss_dict["dense_sfm_points_sdf_loss"] = torch.mean(torch.abs(dense_sfm_points_sdf)) * self.config.dense_points_sdf_loss_mult
-
             # total variational loss for multi-resolution periodic feature volume
             if self.config.periodic_tvl_mult > 0.0:
                 assert self.field.config.encoding_type == "periodic"

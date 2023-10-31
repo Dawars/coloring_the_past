@@ -15,7 +15,7 @@
 """Phototourism dataset parser. Datasets and documentation here: http://phototour.cs.washington.edu/datasets/"""
 from __future__ import annotations
 
-import math
+import itertools
 from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -48,7 +48,7 @@ from nerfstudio.utils.images import BasicImages
 CONSOLE = Console(width=120)
 
 
-def get_masks(image_idx: int, fg_masks, sparse_pts, dense_pts):
+def get_masks(image_idx: int, fg_masks, sparse_pts):
     """function to process additional mask information
 
     Args:
@@ -59,19 +59,12 @@ def get_masks(image_idx: int, fg_masks, sparse_pts, dense_pts):
     # foreground mask
     fg_mask = fg_masks[image_idx]
     fg_mask = BasicImages([fg_mask])
-    output = {"fg_mask": fg_mask }
 
     # sparse_pts
     sparse_points = sparse_pts[image_idx]
     sparse_points = BasicImages([sparse_points])
-    output["sparse_sfm_points"] = sparse_points
 
-    # dense_pts
-    if dense_pts:
-        dense_points = dense_pts[image_idx]
-        dense_points = BasicImages([dense_points])
-        output["dense_sfm_points"] = dense_points
-    return output
+    return {"fg_mask": fg_mask , "sparse_sfm_points": sparse_points}
 
 
 @dataclass
@@ -85,7 +78,11 @@ class HeritageDataParserConfig(DataParserConfig):
     include_mono_prior: bool = False
     """whether or not to include loading of normal """
     include_sensor_depth: bool = False
-    """whether or not to load sensor depth"""
+    """whether or not to include loading of normal """
+    include_sparse_pcd: bool = True
+    """whether or not to include sparse pcd from colmap"""
+    include_dense_pcd: bool = False
+    """whether or not to include dense pcd from colmap"""
     depth_extension: str = '.npy'
     """Extension for depth map including dot (.npy or .png usually)"""
     scale_factor: float = 3.0
@@ -183,11 +180,11 @@ class Heritage(DataParser):
             pts3d_array[pts_id, :3] = torch.from_numpy(pts.xyz)
             error_array[pts_id, 0] = torch.from_numpy(pts.error)
 
-        dense_visibility = defaultdict(list)
-        fused_mesh_path = self.data / "dense/fused.ply"
-        fused_vis_mesh_path = self.data / "dense/fused.ply.vis"
-        loading_dense_points = fused_mesh_path.exists() and fused_vis_mesh_path.exists()
-        if loading_dense_points:
+        if self.config.include_dense_pcd:
+            dense_visibility = defaultdict(list)
+            fused_mesh_path = self.data / "dense/fused.ply"
+            fused_vis_mesh_path = self.data / "dense/fused.ply.vis"
+
             dense_pcd = colmap_utils.read_fused(str(fused_mesh_path), str(fused_vis_mesh_path))
             dense_pts3d_array = torch.ones((len(dense_pcd), 4))
 
@@ -263,18 +260,19 @@ class Heritage(DataParser):
             # img_p3d = img_p3d[img_err[:, 0] < torch.median(img_err)]
 
             # add dense colmap pcd
-            if dense_visibility:
+            if self.config.include_dense_pcd:
                 dense_mask = dense_visibility[img.id]
                 dense_img_p3d = dense_pts3d_array[np.array(dense_mask, dtype=int)]
                 dense_pts.append(dense_img_p3d)
 
-            # weight term as in NeuralRecon-W
-            err_mean = img_err.mean()
-            weight = 2 * np.exp(-((img_err / err_mean) ** 2))
+            if self.config.include_sparse_pcd:
+                # weight term as in NeuralRecon-W
+                err_mean = img_err.mean()
+                weight = 2 * np.exp(-((img_err / err_mean) ** 2))
 
-            img_p3d[:, 3:] = weight
+                img_p3d[:, 3:] = weight
 
-            sparse_pts.append(img_p3d)
+                sparse_pts.append(img_p3d)
 
         poses = torch.stack(poses).float()
         poses[..., 1:3] *= -1  # flip y,z converting to nerfstudio/opengl camera tr
@@ -456,7 +454,8 @@ class Heritage(DataParser):
         image_filenames = [image_filenames[i] for i in indices]
         mask_filenames = [mask_filenames[i] for i in indices]
         fg_masks = [fg_masks[i] for i in indices]
-        sparse_pts = [sparse_pts[i] for i in indices]
+        if sparse_pts:
+            sparse_pts = [sparse_pts[i] for i in indices]
         if dense_pts:
             dense_pts = [dense_pts[i] for i in indices]
         if self.config.include_mono_prior:
@@ -482,8 +481,13 @@ class Heritage(DataParser):
         #     colors = torch.tensor(panoptic_classes["thing_colors"], dtype=torch.float32) / 255.0
         #     semantics = Semantics(filenames=filenames, classes=classes, colors=colors, mask_classes=["person"])
 
+        # combine points
+        sfm_points = []
+        for sparse, dense in itertools.zip_longest(sparse_pts, dense_pts, fillvalue=torch.zeros((0, 4), dtype=torch.float32)):
+            sfm_points.append(torch.cat((sparse, dense)))
+
         metadata = {
-            "masks": {"func": get_masks, "kwargs": {"fg_masks": fg_masks, "sparse_pts": sparse_pts, "dense_pts": dense_pts}}
+            "masks": {"func": get_masks, "kwargs": {"fg_masks": fg_masks, "sparse_pts": sfm_points}}
         }
 
         if self.config.include_mono_prior:
