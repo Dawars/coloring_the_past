@@ -179,12 +179,6 @@ def render_scene(scene_name, resolution: int):
                 )
                 plt.close()
 
-                plt.imsave(
-                    str(render_dir / f"{filename}_distance.png"),
-                    apply_depth_colormap(data["distance"][0], far_plane=max_depth, accumulation=np.expand_dims(sky_mask, -1)),
-                )
-                plt.close()
-
                 mask = Image.frombytes(mode="1", size=sky_mask.shape[::-1], data=np.packbits(sky_mask, axis=1))
                 mask.save(str(render_dir / f"{filename}_mask.png"))
 
