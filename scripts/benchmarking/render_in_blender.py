@@ -158,10 +158,11 @@ def render_scene(scene_name, resolution: int):
 
                 depth_map = data["depth"][0]
                 sky_mask = depth_map != 1e10
+                depth_map[sky_mask] /= multiplier
                 if depth_map[sky_mask].any():
-                    max_depth = depth_map[sky_mask].max() / multiplier + 1e-5
+                    max_depth = depth_map[sky_mask].max() + 1e-5
                 else:
-                    max_depth = None
+                    continue
                 print(max_depth)
 
                 plt.imsave(
