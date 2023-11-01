@@ -175,8 +175,8 @@ def render_scene(scene_name, resolution: int):
                 mask.save(str(render_dir / f"{filename}_mask.png"))
 
                 # save_array_as_image(data["diffuse"][0], "diffuse", str(render_dir / f"{filename}_diffuse.png"))
-                save_array_as_image(data["normals"][0], "normals", str(render_dir / f"{filename}_normals.png"))
-                save_array_as_image(data["colors"][0], "colors", str(render_dir / f"{filename}_color.png"))
+                save_array_as_image(data["normals"][0].clip(0, 1), "normals", str(render_dir / f"{filename}_normals.png"))
+                save_array_as_image(data["colors"][0].clip(0, 1), "colors", str(render_dir / f"{filename}_color.png"))
 
                 # np.save(str(out_dir / f"{filename}_depth.npy"), data["depth"][0])
 
