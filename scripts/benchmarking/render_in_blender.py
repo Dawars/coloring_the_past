@@ -24,6 +24,7 @@ sys.path.insert(0, str(sdfstudio_dir))
 
 from nerfstudio.data.utils.colmap_utils import read_cameras_binary, read_images_binary
 
+
 # import pydevd_pycharm
 
 # pydevd_pycharm.settrace("localhost", port=12345, stdoutToServer=True, stderrToServer=True)
@@ -98,20 +99,23 @@ def render_scene(scene_name, resolution: int):
         data_path = sdfstudio_dir / config.pipeline.datamanager.dataparser.data
 
         # bproc.renderer.enable_distance_output(activate_antialiasing=True)
-        bproc.renderer.enable_depth_output(activate_antialiasing=False)
+        bproc.renderer.enable_depth_output(
+            activate_antialiasing=False,
+        )  # convert_to_distance=True)
+        bproc.renderer.set_world_background([1, 1, 1], strength=35)
 
-        multiplier = 10
+        # multiplier = 10
 
         mesh_path = list(config_file.parent.glob(f"*{resolution}_sfm.ply"))[0]
         print(f"Loading pcd {mesh_path}")
         pcd = bproc.loader.load_obj(str(mesh_path))
-        pcd[0].set_scale([multiplier, multiplier, multiplier], 0)
+        # pcd[0].set_scale([multiplier, multiplier, multiplier], 1)
         print("Loading pcd done")
 
         # Create a point light next to it
-        light = bproc.types.Light()
-        light.set_location([2, -2, 0])
-        light.set_energy(3000)
+        # light = bproc.types.Light()
+        # light.set_location([20, -20, 0])
+        # light.set_energy(6000)
 
         # load colmap cameras and visualize as spheres
         camdata = read_cameras_binary(str(data_path / "dense/sparse/cameras.bin"))
@@ -129,7 +133,7 @@ def render_scene(scene_name, resolution: int):
             t = v.tvec.reshape(3, 1)
             w2c = np.concatenate([np.concatenate([R, t], 1), bottom], 0)
             pose = np.linalg.inv(w2c)
-            pose[:3, 3:4] *= multiplier
+            # pose[:3, 3:4] *= multiplier
             pose = bproc.math.change_source_coordinate_frame_of_transformation_matrix(pose, ["X", "-Y", "-Z"])
 
             img_id = v.id
@@ -144,6 +148,7 @@ def render_scene(scene_name, resolution: int):
 
             bproc.utility.reset_keyframes()
             with UndoAfterExecution():
+                #            if True:
                 # define the camera resolution
                 K = np.array([[fx, 0, cx], [0, fy, cy], [0, 0, 1]])
                 bproc.camera.set_intrinsics_from_K_matrix(K, cam.width, cam.height)
@@ -152,13 +157,16 @@ def render_scene(scene_name, resolution: int):
                 bproc.renderer.enable_normals_output()
 
                 data = bproc.renderer.render(
-                    load_keys={"distance", "depth", "normals", "color"},
+                    load_keys={
+                        "depth",
+                        "normals",
+                    },
                     output_key="colors",
                 )
 
                 depth_map = data["depth"][0]
                 sky_mask = depth_map != 1e10
-                depth_map[sky_mask] /= multiplier
+                # depth_map[sky_mask] /= multiplier
                 if depth_map[sky_mask].any():
                     max_depth = depth_map[sky_mask].max() + 1e-5
                 else:
@@ -171,14 +179,19 @@ def render_scene(scene_name, resolution: int):
                 )
                 plt.close()
 
+                plt.imsave(
+                    str(render_dir / f"{filename}_distance.png"),
+                    apply_depth_colormap(data["distance"][0], far_plane=max_depth, accumulation=np.expand_dims(sky_mask, -1)),
+                )
+                plt.close()
+
                 mask = Image.frombytes(mode="1", size=sky_mask.shape[::-1], data=np.packbits(sky_mask, axis=1))
                 mask.save(str(render_dir / f"{filename}_mask.png"))
 
-                # save_array_as_image(data["diffuse"][0], "diffuse", str(render_dir / f"{filename}_diffuse.png"))
                 save_array_as_image(data["normals"][0].clip(0, 1), "normals", str(render_dir / f"{filename}_normals.png"))
-                save_array_as_image(data["colors"][0].clip(0, 1), "colors", str(render_dir / f"{filename}_color.png"))
+                save_array_as_image(data["colors"][0], "colors", str(render_dir / f"{filename}_color.png"))
 
-                # np.save(str(out_dir / f"{filename}_depth.npy"), data["depth"][0])
+                # np.save(str(render_dir / f"{filename}_depth.npy"), data["depth"][0])
 
 
 if __name__ == "__main__":
