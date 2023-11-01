@@ -102,10 +102,10 @@ def render_scene(scene_name, resolution: int):
 
         multiplier = 10
 
-        mesh_path = list(config_file.parent.glob(f"*{resolution}.ply"))[0]
+        mesh_path = list(config_file.parent.glob(f"*{resolution}_sfm.ply"))[0]
         print(f"Loading pcd {mesh_path}")
         pcd = bproc.loader.load_obj(str(mesh_path))
-        pcd[0].set_scale(multiplier, 0)
+        pcd[0].set_scale([multiplier, multiplier, multiplier], 0)
         print("Loading pcd done")
 
         # Create a point light next to it
