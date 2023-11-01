@@ -90,6 +90,9 @@ def render_scene(scene_name, resolution: int):
         print(training_path)
         ckpt_file = sorted(list(training_path.glob("*.ckpt")))[-1]
         render_dir = training_path.parent / "renders"
+        if render_dir.exists():
+            print(f"Skipping {render_dir} already exists")
+            continue
         render_dir.mkdir(exist_ok=True)
         config_file = ckpt_file.parent.with_name("config.yml")
         config = yaml.load(config_file.read_text(), Loader=yaml.Loader)
