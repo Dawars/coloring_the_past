@@ -85,7 +85,7 @@ bproc.init()
 
 
 def render_scene(scene_name, resolution: int):
-    for training_path in ((sdfstudio_dir / "outputs" / scene_name).rglob("./**/nerfstudio_models/")):
+    for training_path in (sdfstudio_dir / "outputs" / scene_name).rglob("./**/nerfstudio_models/"):
         print(training_path)
         ckpt_file = sorted(list(training_path.glob("*.ckpt")))[-1]
         render_dir = training_path.parent / "renders"
@@ -100,9 +100,12 @@ def render_scene(scene_name, resolution: int):
         # bproc.renderer.enable_distance_output(activate_antialiasing=True)
         bproc.renderer.enable_depth_output(activate_antialiasing=False)
 
-        mesh_path = list(config_file.parent.glob(f"*{resolution}_sfm.ply"))[0]
+        multiplier = 10
+
+        mesh_path = list(config_file.parent.glob(f"*{resolution}.ply"))[0]
         print(f"Loading pcd {mesh_path}")
         pcd = bproc.loader.load_obj(str(mesh_path))
+        pcd[0].set_scale(multiplier, 0)
         print("Loading pcd done")
 
         # Create a point light next to it
@@ -126,6 +129,7 @@ def render_scene(scene_name, resolution: int):
             t = v.tvec.reshape(3, 1)
             w2c = np.concatenate([np.concatenate([R, t], 1), bottom], 0)
             pose = np.linalg.inv(w2c)
+            pose[:3, 3:4] *= multiplier
             pose = bproc.math.change_source_coordinate_frame_of_transformation_matrix(pose, ["X", "-Y", "-Z"])
 
             img_id = v.id
