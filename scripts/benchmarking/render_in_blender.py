@@ -86,6 +86,18 @@ def apply_depth_colormap(
 
 bproc.init()
 
+import bpy
+devices = bpy.context.preferences.addons['cycles'].preferences.get_devices_for_type("CUDA")
+print(devices)
+cuda_ids = [i for i, device in enumerate(devices) if "NVIDIA" in device.name]
+cpu_ids = [i for i, device in enumerate(devices) if "CPU" in device.name]
+print("cuda ids", cuda_ids)
+print("cpu ids", cpu_ids)
+
+bproc.renderer.set_render_devices(desired_gpu_ids=cuda_ids[:1] + cpu_ids)
+
+
+
 
 def render_scene(scene_name, resolution: int):
     for training_path in (sdfstudio_dir / "outputs" / scene_name).rglob("./**/nerfstudio_models/"):
