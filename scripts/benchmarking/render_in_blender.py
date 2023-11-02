@@ -2,7 +2,6 @@ import blenderproc as bproc
 
 import argparse
 
-import pandas
 import pandas as pd
 import yaml
 
@@ -108,6 +107,7 @@ def render_scene(scene_name, resolution: int):
         files = files[files["split"] == "test"]
         files.reset_index(inplace=True, drop=True)
         file_list = set(files["filename"])
+        print(file_list)
 
         # bproc.renderer.enable_distance_output(activate_antialiasing=True)
         bproc.renderer.enable_depth_output(
@@ -115,12 +115,12 @@ def render_scene(scene_name, resolution: int):
         )  # convert_to_distance=True)
         bproc.renderer.set_world_background([1, 1, 1], strength=35)
 
-        multiplier = 10
+        # multiplier = 10
 
         mesh_path = list(config_file.parent.glob(f"*{resolution}_sfm.ply"))[0]
         print(f"Loading pcd {mesh_path}")
         pcd = bproc.loader.load_obj(str(mesh_path))
-        pcd[0].set_scale([multiplier, multiplier, multiplier], 1)
+        # pcd[0].set_scale([multiplier, multiplier, multiplier], 1)
         print("Loading pcd done")
 
         # load colmap cameras and visualize as spheres
@@ -141,7 +141,7 @@ def render_scene(scene_name, resolution: int):
             t = v.tvec.reshape(3, 1)
             w2c = np.concatenate([np.concatenate([R, t], 1), bottom], 0)
             pose = np.linalg.inv(w2c)
-            pose[:3, 3:4] *= multiplier
+            # pose[:3, 3:4] *= multiplier
             pose = bproc.math.change_source_coordinate_frame_of_transformation_matrix(pose, ["X", "-Y", "-Z"])
 
             img_id = v.id
@@ -166,15 +166,17 @@ def render_scene(scene_name, resolution: int):
 
                 data = bproc.renderer.render(
                     load_keys={
+                        "distance",
                         "depth",
                         "normals",
                     },
                     output_key="colors",
                 )
+                print(data.keys())
 
                 depth_map = data["depth"][0]
                 sky_mask = depth_map != 1e10
-                depth_map[sky_mask] = depth_map[sky_mask] / multiplier
+                # depth_map[sky_mask] /= multiplier
                 if depth_map[sky_mask].any():
                     max_depth = depth_map[sky_mask].max() + 1e-5
                 else:
