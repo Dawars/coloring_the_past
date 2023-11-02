@@ -103,7 +103,7 @@ def render_scene(scene_name, resolution: int):
         bproc.renderer.set_render_devices(desired_gpu_ids=cuda_ids[:1] + cpu_ids)
 
         ckpt_file = sorted(list(training_path.glob("*.ckpt")))[-1]
-        render_dir = training_path.parent / "renders"
+        render_dir = training_path.parent / f"renders_{resolution}"
         if render_dir.exists():
             print(f"Skipping {render_dir} already exists")
             continue
