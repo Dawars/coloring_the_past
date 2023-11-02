@@ -1,6 +1,9 @@
 import blenderproc as bproc
 
 import argparse
+
+import pandas
+import pandas as pd
 import yaml
 
 """
@@ -100,6 +103,11 @@ def render_scene(scene_name, resolution: int):
         setting = config.pipeline.datamanager.dataparser.setting
         setting_suffix = "" if setting == "" else f"_{setting}"
         data_path = sdfstudio_dir / config.pipeline.datamanager.dataparser.data
+        image_list = list(data_path.glob(f"*{setting_suffix}.tsv"))[0]
+        files = pd.read_csv(image_list, sep="\t")
+        files = files[files["split"] == "test"]
+        files.reset_index(inplace=True, drop=True)
+        file_list = set(files["filename"])
 
         # bproc.renderer.enable_distance_output(activate_antialiasing=True)
         bproc.renderer.enable_depth_output(
@@ -107,18 +115,13 @@ def render_scene(scene_name, resolution: int):
         )  # convert_to_distance=True)
         bproc.renderer.set_world_background([1, 1, 1], strength=35)
 
-        # multiplier = 10
+        multiplier = 10
 
         mesh_path = list(config_file.parent.glob(f"*{resolution}_sfm.ply"))[0]
         print(f"Loading pcd {mesh_path}")
         pcd = bproc.loader.load_obj(str(mesh_path))
-        # pcd[0].set_scale([multiplier, multiplier, multiplier], 1)
+        pcd[0].set_scale([multiplier, multiplier, multiplier], 1)
         print("Loading pcd done")
-
-        # Create a point light next to it
-        # light = bproc.types.Light()
-        # light.set_location([20, -20, 0])
-        # light.set_energy(6000)
 
         # load colmap cameras and visualize as spheres
         camdata = read_cameras_binary(str(data_path / "dense/sparse/cameras.bin"))
@@ -130,13 +133,15 @@ def render_scene(scene_name, resolution: int):
 
         for v in imdata.values():
             filename = v.name
+            if filename not in file_list:
+                continue
             print(filename)
 
             R = v.qvec2rotmat()
             t = v.tvec.reshape(3, 1)
             w2c = np.concatenate([np.concatenate([R, t], 1), bottom], 0)
             pose = np.linalg.inv(w2c)
-            # pose[:3, 3:4] *= multiplier
+            pose[:3, 3:4] *= multiplier
             pose = bproc.math.change_source_coordinate_frame_of_transformation_matrix(pose, ["X", "-Y", "-Z"])
 
             img_id = v.id
@@ -169,7 +174,7 @@ def render_scene(scene_name, resolution: int):
 
                 depth_map = data["depth"][0]
                 sky_mask = depth_map != 1e10
-                # depth_map[sky_mask] /= multiplier
+                depth_map[sky_mask] = depth_map[sky_mask] / multiplier
                 if depth_map[sky_mask].any():
                     max_depth = depth_map[sky_mask].max() + 1e-5
                 else:
