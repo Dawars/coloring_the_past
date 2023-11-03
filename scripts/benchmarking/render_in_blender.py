@@ -97,7 +97,7 @@ def render_scene(scene_name, resolution: int):
         devices = bpy.context.preferences.addons["cycles"].preferences.get_devices_for_type("CUDA")
         print(devices)
         cuda_ids = [i for i, device in enumerate(devices) if "NVIDIA" in device.name]
-        cpu_ids = [i for i, device in enumerate(devices) if "CPU" in device.name]
+        cpu_ids = [i for i, device in enumerate(devices) if "CPU" in device.name or "AMD" in device.name]
         print("cuda ids", cuda_ids)
         print("cpu ids", cpu_ids)
 
