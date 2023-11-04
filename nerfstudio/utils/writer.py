@@ -285,7 +285,7 @@ class WandbWriter(Writer):
     """WandDB Writer Class"""
 
     def __init__(self, log_dir: Path, exp_name: str):
-        wandb.init(project="sdfstudio", name=exp_name, dir=str(log_dir), reinit=True)
+        wandb.init(project="sdfstudio2", name=exp_name, dir=str(log_dir), reinit=True)
 
     def write_image(self, name: str, image: TensorType["H", "W", "C"], step: int) -> None:
         image = torch.permute(image, (2, 0, 1))
