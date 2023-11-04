@@ -289,7 +289,7 @@ class SurfaceModel(Model):
         accumulation = self.renderer_accumulation(weights=weights)
 
         # background model
-        if self.config.background_model != "none" and not self.training:
+        if self.config.background_model != "none" and self.training:
             # TODO remove hard-coded far value
             # sample inversely from far to 1000 and points and forward the bg model
             ray_bundle.nears = ray_bundle.fars
