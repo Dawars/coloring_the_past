@@ -271,6 +271,46 @@ method_configs["monosdf"] = TrainerConfig(
     vis="viewer",
 )
 
+
+method_configs["monosdf-bigmlp"] = TrainerConfig(
+    method_name="monosdf-bigmlp",
+    steps_per_eval_image=5000,
+    steps_per_eval_batch=5000,
+    steps_per_save=20000,
+    steps_per_eval_all_images=1000000,  # set to a very large model so we don't eval with all images
+    max_num_iterations=200001,
+    mixed_precision=False,
+    pipeline=VanillaPipelineConfig(
+        datamanager=VanillaDataManagerConfig(
+            dataparser=SDFStudioDataParserConfig(),
+            train_num_images_to_sample_from=20,
+            train_num_times_to_repeat_images=100,
+            eval_num_images_to_sample_from=20,
+            eval_num_times_to_repeat_images=100,
+            train_num_rays_per_batch=1024,
+            eval_num_rays_per_batch=1024,
+            camera_optimizer=CameraOptimizerConfig(
+                mode="off", optimizer=AdamOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
+            ),
+        ),
+        model=VolSDFModelConfig(mono_depth_loss_mult=0.1, mono_normal_loss_mult=0.05,
+                                sdf_field=SDFFieldConfig(num_layers=8, hidden_dim=512, num_layers_color=4),
+                                eval_num_rays_per_chunk=1024),
+    ),
+    optimizers={
+        "fields": {
+            "optimizer": AdamOptimizerConfig(lr=5e-4, eps=1e-15),
+            "scheduler": ExponentialSchedulerConfig(decay_rate=0.1, max_steps=200000),
+        },
+        "field_background": {
+            "optimizer": AdamOptimizerConfig(lr=5e-4, eps=1e-15),
+            "scheduler": ExponentialSchedulerConfig(decay_rate=0.1, max_steps=200000),
+        },
+    },
+    viewer=ViewerConfig(num_rays_per_chunk=1 << 15),
+    vis="viewer",
+)
+
 method_configs["volsdf"] = TrainerConfig(
     method_name="volsdf",
     steps_per_eval_image=5000,
@@ -371,7 +411,7 @@ method_configs["mono-neus"] = TrainerConfig(
 )
 
 method_configs["mono-neus-bigmlp"] = TrainerConfig(
-    method_name="mono-neus",
+    method_name="mono-neus-bigmlp",
     steps_per_eval_image=5000,
     steps_per_eval_batch=5000,
     steps_per_save=20000,
