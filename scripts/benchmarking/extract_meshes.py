@@ -66,6 +66,21 @@ def extract_meshes(scene_name: str, simplify=False, resolution=1024):
             mesh = trimesh.load_mesh(str(out_path).replace(".ply", "-simplify.ply"))
         else:
             mesh = trimesh.load_mesh(out_path)
+
+        # remove faces outside unit sphere?
+        vert1 = mesh.vertices[mesh.faces[:, 0]]
+        vert2 = mesh.vertices[mesh.faces[:, 1]]
+        vert3 = mesh.vertices[mesh.faces[:, 2]]
+
+        face_mask = (
+            (np.linalg.norm(vert1, keepdims=True, axis=1) >= 0.98**2)
+            & (np.linalg.norm(vert2, keepdims=True, axis=1) >= 0.98**2)
+            & (np.linalg.norm(vert3, keepdims=True, axis=1) >= 0.98**2)
+        )
+        mesh.update_faces(~face_mask[:, 0])
+        mesh.remove_degenerate_faces()
+        mesh.remove_unreferenced_vertices()
+
         mesh.apply_transform(np.linalg.inv(transform))
         mesh.apply_scale(1 / scale)
         mesh.apply_translation(scene_config["origin"][0])  # add back origin
