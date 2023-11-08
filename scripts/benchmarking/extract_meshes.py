@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 import numpy as np
+import torch.linalg
 import trimesh
 import yaml
 from tqdm import tqdm
@@ -60,7 +61,6 @@ def extract_meshes(scene_name: str, simplify=False, resolution=1024):
         except RuntimeError as e:
             print(e)
             continue
-        del extract_mesh
 
         if simplify:
             mesh = trimesh.load_mesh(str(out_path).replace(".ply", "-simplify.ply"))
@@ -81,11 +81,30 @@ def extract_meshes(scene_name: str, simplify=False, resolution=1024):
         mesh.remove_degenerate_faces()
         mesh.remove_unreferenced_vertices()
 
+
+        verts_list = torch.from_numpy(mesh.vertices).float()
+        num_splits = 50_000
+        verts_list = torch.split(verts_list, num_splits)
+        normals_list = torch.split(torch.from_numpy(mesh.vertex_normals).float(), num_splits)
+        colors = []
+        with torch.no_grad():
+            for verts, norms in zip(verts_list, normals_list):
+                verts = verts.cuda()
+                geo_features = extract_mesh.pipeline.model.field.forward_geonetwork(verts.cuda())[:, 1:].contiguous().float()
+                view_dir = -verts / torch.linalg.norm(verts, dim=1, keepdim=True)
+                color = extract_mesh.pipeline.model.field.get_colors(verts, view_dir, norms.cuda(), geo_features, None).contiguous()
+                colors.append(color.detach().cpu())
+            colors = torch.cat(colors)
+
         mesh.apply_transform(np.linalg.inv(transform))
         mesh.apply_scale(1 / scale)
         mesh.apply_translation(scene_config["origin"][0])  # add back origin
 
         mesh.export(config_file.with_name(f"mesh_{resolution}_sfm.ply"))
+
+        mesh.visual.vertex_colors = colors.numpy()
+        mesh.export(config_file.with_name(f"mesh_{resolution}_sfm_color.ply"))
+
         if "sfm2gt" in scene_config:
             mesh.apply_transform(np.array(scene_config["sfm2gt"]))
             mesh.export(config_file.with_name(f"mesh_{resolution}_gt.ply"))

@@ -42,7 +42,7 @@ class ExtractMesh:
         assert str(self.output_path)[-4:] == ".ply"
         self.output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        _, pipeline, _ = eval_setup(self.load_config)
+        _, self.pipeline, _ = eval_setup(self.load_config)
 
         CONSOLE.print("Extract mesh with marching cubes and may take a while")
 
@@ -50,24 +50,24 @@ class ExtractMesh:
             # for unisurf
             get_surface_occupancy(
                 occupancy_fn=lambda x: torch.sigmoid(
-                    10 * pipeline.model.field.forward_geonetwork(x)[:, 0].contiguous()
+                    10 * self.pipeline.model.field.forward_geonetwork(x)[:, 0].contiguous()
                 ),
                 resolution=self.resolution,
                 bounding_box_min=self.bounding_box_min,
                 bounding_box_max=self.bounding_box_max,
                 level=0.5,
-                device=pipeline.model.device,
+                device=self.pipeline.model.device,
                 output_path=self.output_path,
             )
         else:
             assert self.resolution % 512 == 0
             # for sdf we can multi-scale extraction.
             get_surface_sliding(
-                sdf=lambda x: pipeline.model.field.forward_geonetwork(x)[:, 0].contiguous(),
+                sdf=lambda x: self.pipeline.model.field.forward_geonetwork(x)[:, 0].contiguous(),
                 resolution=self.resolution,
                 bounding_box_min=self.bounding_box_min,
                 bounding_box_max=self.bounding_box_max,
-                coarse_mask=pipeline.model.scene_box.coarse_binary_gird,
+                coarse_mask=self.pipeline.model.scene_box.coarse_binary_gird,
                 output_path=self.output_path,
                 simplify_mesh=self.simplify_mesh,
             )
