@@ -85,6 +85,9 @@ def apply_depth_colormap(
 
 
 bproc.init()
+bproc.renderer.enable_depth_output(
+    activate_antialiasing=False,
+)
 
 import bpy
 
@@ -122,10 +125,6 @@ def render_scene(scene_name, resolution: int):
         file_list = set(files["filename"])
         print(file_list)
 
-        # bproc.renderer.enable_distance_output(activate_antialiasing=True)
-        bproc.renderer.enable_depth_output(
-            activate_antialiasing=False,
-        )  # convert_to_distance=True)
         bproc.renderer.set_world_background([1, 1, 1], strength=35)
 
         # multiplier = 10
