@@ -129,9 +129,12 @@ def render_scene(scene_name, resolution: int):
 
         # multiplier = 10
 
-        mesh_path = list(config_file.parent.glob(f"*{resolution}_sfm.ply"))[0]
+        mesh_path = list(config_file.parent.glob(f"*{resolution}_sfm.ply"))
+        if not mesh_path:
+            print(f"no mesh for {training_path}")
+            continue
         print(f"Loading pcd {mesh_path}")
-        pcd = bproc.loader.load_obj(str(mesh_path))
+        pcd = bproc.loader.load_obj(str(mesh_path[0]))
         # pcd[0].set_scale([multiplier, multiplier, multiplier], 1)
         print("Loading pcd done")
 
