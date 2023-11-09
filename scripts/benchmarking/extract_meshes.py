@@ -72,10 +72,11 @@ def extract_meshes(scene_name: str, simplify=False, resolution=1024):
         vert2 = mesh.vertices[mesh.faces[:, 1]]
         vert3 = mesh.vertices[mesh.faces[:, 2]]
 
+        radius = 0.95 ** 2
         face_mask = (
-            (np.linalg.norm(vert1, keepdims=True, axis=1) >= 0.98**2)
-            & (np.linalg.norm(vert2, keepdims=True, axis=1) >= 0.98**2)
-            & (np.linalg.norm(vert3, keepdims=True, axis=1) >= 0.98**2)
+            (np.linalg.norm(vert1, keepdims=True, axis=1) >= radius)
+            & (np.linalg.norm(vert2, keepdims=True, axis=1) >= radius)
+            & (np.linalg.norm(vert3, keepdims=True, axis=1) >= radius)
         )
         mesh.update_faces(~face_mask[:, 0])
         mesh.remove_degenerate_faces()
