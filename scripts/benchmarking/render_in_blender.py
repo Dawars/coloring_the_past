@@ -207,7 +207,9 @@ def render_scene(scene_name, resolution: int):
                 mask = Image.frombytes(mode="1", size=sky_mask.shape[::-1], data=np.packbits(sky_mask, axis=1))
                 mask.save(str(render_dir / f"{filename}_mask.png"))
 
-                save_array_as_image(data["normals"][0].clip(0, 1), "normals", str(render_dir / f"{filename}_normals.png"))
+                normals = data["normals"][0].clip(0, 1)
+                normals[~sky_mask] = 1  # bg to white
+                save_array_as_image(normals, "normals", str(render_dir / f"{filename}_normals.png"))
                 save_array_as_image(data["colors"][0], "colors", str(render_dir / f"{filename}_color.png"))
 
                 # np.save(str(render_dir / f"{filename}_depth.npy"), data["depth"][0])
