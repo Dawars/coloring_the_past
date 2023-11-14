@@ -389,10 +389,10 @@ class SurfaceModel(Model):
         if self.config.color_loss:
             # convert output to grayscale if input image is grayscale
             grayscale = batch["is_gray"][:, 0]
-            if grayscale.any():
-                rgb2gray = outputs["rgb"][grayscale][:, 0] * 0.2989 + \
-                           outputs["rgb"][grayscale][:, 1] * 0.5870 + \
-                           outputs["rgb"][grayscale][:, 2] * 0.1140
+            if grayscale.any():  # https://openaccess.thecvf.com/content_cvpr_2017/papers/Nguyen_Why_You_Should_CVPR_2017_paper.pdf
+                rgb2gray = outputs["rgb"][grayscale][:, 0] * 0.2126 + \
+                           outputs["rgb"][grayscale][:, 1] * 0.7152 + \
+                           outputs["rgb"][grayscale][:, 2] * 0.0722
 
                 outputs["rgb"][grayscale] = rgb2gray.unsqueeze(-1)
 
