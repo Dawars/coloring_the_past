@@ -265,7 +265,6 @@ class SDFField(Field):
             min_freq_exp=0.0,
             max_freq_exp=self.config.position_encoding_max_degree - 1,
             include_input=False,
-            off_axis=self.config.off_axis,
         )
 
         self.direction_encoding = NeRFEncoding(

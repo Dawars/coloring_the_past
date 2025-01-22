@@ -186,16 +186,14 @@ method_configs["bakedangelo"] = TrainerConfig(
 )
 
 
-method_configs["neuralangelo"] = Config(
+method_configs["neuralangelo"] = TrainerConfig(
     method_name="neuralangelo",
-    trainer=TrainerConfig(
-        steps_per_eval_image=5000,
-        steps_per_eval_batch=5000,
-        steps_per_save=20000,
-        steps_per_eval_all_images=1000000,  # set to a very large model so we don't eval with all images
-        max_num_iterations=500_001,
-        mixed_precision=False,
-    ),
+    steps_per_eval_image=5000,
+    steps_per_eval_batch=5000,
+    steps_per_save=20000,
+    steps_per_eval_all_images=1000000,  # set to a very large model so we don't eval with all images
+    max_num_iterations=500_001,
+    mixed_precision=False,
     pipeline=VanillaPipelineConfig(
         datamanager=VanillaDataManagerConfig(
             dataparser=SDFStudioDataParserConfig(),
@@ -489,16 +487,14 @@ method_configs["bakedsdf-mlp"] = TrainerConfig(
 )
 
 
-method_configs["neus-facto-angelo"] = Config(
+method_configs["neus-facto-angelo"] = TrainerConfig(
     method_name="neus-facto-angelo",
-    trainer=TrainerConfig(
-        steps_per_eval_image=5000,
-        steps_per_eval_batch=5000,
-        steps_per_save=20000,
-        steps_per_eval_all_images=1000000,  # set to a very large model so we don't eval with all images
-        max_num_iterations=1000_001,
-        mixed_precision=False,
-    ),
+    steps_per_eval_image=5000,
+    steps_per_eval_batch=5000,
+    steps_per_save=20000,
+    steps_per_eval_all_images=1000000,  # set to a very large model so we don't eval with all images
+    max_num_iterations=1000_001,
+    mixed_precision=False,
     pipeline=VanillaPipelineConfig(
         datamanager=VanillaDataManagerConfig(
             dataparser=SDFStudioDataParserConfig(),
