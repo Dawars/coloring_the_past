@@ -34,6 +34,7 @@ from nerfstudio.data.dataparsers.base_dataparser import (
     DataParser,
     DataParserConfig,
     DataparserOutputs,
+    Semantics,
 )
 from nerfstudio.data.scene_box import SceneBox
 from nerfstudio.data.utils import colmap_utils
@@ -85,23 +86,175 @@ class HeritageDataParserConfig(DataParserConfig):
     """whether or not to include dense pcd from colmap"""
     depth_extension: str = '.npy'
     """Extension for depth map including dot (.npy or .png usually)"""
-    scale_factor: float = 3.0
-    """How much to scale the camera origins by."""
     alpha_color: str = "white"
     """alpha color of background"""
-    train_split_percentage: float = 0.9
-    """The percent of images to use for training. The remaining images are for eval."""
     scene_scale: float = 1.0
     """How much to scale the region of interest by."""
     orientation_method: Literal["pca", "up", "none"] = "up"
     """The method to use for orientation."""
     auto_scale_poses: bool = True
     """Whether to automatically scale the poses to fit in +/- 1 bounding box."""
-    center_poses: bool = True
-    """Whether to center the poses."""
+    include_semantics: bool = False
+    """whether or not to include loading of semantics data"""
     setting: str = ""
     """Choose tsv file which contains subset of images, e.g: all, clean, facade"""
 
+
+transient_objects = ['person', 'car', 'bicycle', 'minibike', 'tree', "desk",
+                     "blanket", "bed ", "tray", "computer", "swimming pool",
+                     "plate", "basket", "glass", "food", "land",
+                     ]
+label_id_mapping_ade20k = {'airplane': 90,
+                           'animal': 126,
+                           'apparel': 92,
+                           'arcade machine': 78,
+                           'armchair': 30,
+                           'ashcan': 138,
+                           'awning': 86,
+                           'bag': 115,
+                           'ball': 119,
+                           'bannister': 95,
+                           'bar': 77,
+                           'barrel': 111,
+                           'base': 40,
+                           'basket': 112,
+                           'bathtub': 37,
+                           'bed ': 7,
+                           'bench': 69,
+                           'bicycle': 127,
+                           'blanket': 131,
+                           'blind': 63,
+                           'boat': 76,
+                           'book': 67,
+                           'bookcase': 62,
+                           'booth': 88,
+                           'bottle': 98,
+                           'box': 41,
+                           'bridge': 61,
+                           'buffet': 99,
+                           'building': 1,
+                           'bulletin board': 144,
+                           'bus': 80,
+                           'cabinet': 10,
+                           'canopy': 106,
+                           'car': 20,
+                           'case': 55,
+                           'ceiling': 5,
+                           'chair': 19,
+                           'chandelier': 85,
+                           'chest of drawers': 44,
+                           'clock': 148,
+                           'coffee table': 64,
+                           'column': 42,
+                           'computer': 74,
+                           'conveyer belt': 105,
+                           'counter': 45,
+                           'countertop': 70,
+                           'cradle': 117,
+                           'crt screen': 141,
+                           'curtain': 18,
+                           'cushion': 39,
+                           'desk': 33,
+                           'dirt track': 91,
+                           'dishwasher': 129,
+                           'door': 14,
+                           'earth': 13,
+                           'escalator': 96,
+                           'fan': 139,
+                           'fence': 32,
+                           'field': 29,
+                           'fireplace': 49,
+                           'flag': 149,
+                           'floor': 3,
+                           'flower': 66,
+                           'food': 120,
+                           'fountain': 104,
+                           'glass': 147,
+                           'grandstand': 51,
+                           'grass': 9,
+                           'hill': 68,
+                           'hood': 133,
+                           'house': 25,
+                           'hovel': 79,
+                           'kitchen island': 73,
+                           'lake': 128,
+                           'lamp': 36,
+                           'land': 94,
+                           'light': 82,
+                           'microwave': 124,
+                           'minibike': 116,
+                           'mirror': 27,
+                           'monitor': 143,
+                           'mountain': 16,
+                           'ottoman': 97,
+                           'oven': 118,
+                           'painting': 22,
+                           'palm': 72,
+                           'path': 52,
+                           'person': 12,
+                           'pier': 140,
+                           'pillow': 57,
+                           'plant': 17,
+                           'plate': 142,
+                           'plaything': 108,
+                           'pole': 93,
+                           'pool table': 56,
+                           'poster': 100,
+                           'pot': 125,
+                           'radiator': 146,
+                           'railing': 38,
+                           'refrigerator': 50,
+                           'river': 60,
+                           'road': 6,
+                           'rock': 34,
+                           'rug': 28,
+                           'runway': 54,
+                           'sand': 46,
+                           'sconce': 134,
+                           'screen': 130,
+                           'screen door': 58,
+                           'sculpture': 132,
+                           'sea': 26,
+                           'seat': 31,
+                           'shelf': 24,
+                           'ship': 103,
+                           'shower': 145,
+                           'sidewalk': 11,
+                           'signboard': 43,
+                           'sink': 47,
+                           'sky': 2,
+                           'skyscraper': 48,
+                           'sofa': 23,
+                           'stage': 101,
+                           'stairs': 53,
+                           'stairway': 59,
+                           'step': 121,
+                           'stool': 110,
+                           'stove': 71,
+                           'streetlight': 87,
+                           'swimming pool': 109,
+                           'swivel chair': 75,
+                           'table': 15,
+                           'tank': 122,
+                           'television receiver': 89,
+                           'tent': 114,
+                           'toilet': 65,
+                           'towel': 81,
+                           'tower': 84,
+                           'trade name': 123,
+                           'traffic light': 136,
+                           'tray': 137,
+                           'tree': 4,
+                           'truck': 83,
+                           'van': 102,
+                           'vase': 135,
+                           'wall': 0,
+                           'wardrobe': 35,
+                           'washer': 107,
+                           'water': 21,
+                           'waterfall': 113,
+                           'windowpane': 8}
+id_label_mapping_ade20k = {v: k for k, v in label_id_mapping_ade20k.items()}
 
 @dataclass
 class Heritage(DataParser):
@@ -114,9 +267,7 @@ class Heritage(DataParser):
     def __init__(self, config: HeritageDataParserConfig):
         super().__init__(config=config)
         self.data: Path = config.data
-        self.scale_factor: float = config.scale_factor
         self.alpha_color = config.alpha_color
-        self.train_split_percentage = config.train_split_percentage
 
     # pylint: disable=too-many-statements
     def _generate_dataparser_outputs(self, split="train"):
@@ -207,17 +358,15 @@ class Heritage(DataParser):
         depth_filenames = []
         sensor_filenames = []
         normal_filenames = []
-        fg_masks = []
         sparse_pts = []
         dense_pts = []
 
-        flip = torch.eye(3)
-        flip[0, 0] = -1.0
-        flip = flip.double()
+        # flip = torch.eye(3)
+        # flip[0, 0] = -1.0
+        # flip = flip.double()
 
         for filename in file_list:
             if filename not in img_path_to_id.keys():
-                print(f"image {filename} not found in sfm result!!")
                 print(f"image {filename} not found in sfm result!!")
                 continue
             _id = img_path_to_id[filename]
@@ -243,11 +392,6 @@ class Heritage(DataParser):
                 depth_filenames.append(self.data / "depth" / img.name.replace(".jpg", self.config.depth_extension))
                 sensor_filenames.append(self.data / "dense" / "stereo" / "depth_maps" / img.name.replace(".jpg", ".jpg.geometric.bin"))
                 normal_filenames.append(self.data / "normal" / img.name.replace(".jpg", ".npy"))
-
-            # load sky segmentation and it's used as foreground mask
-            semantic = np.load(semantic_filenames[-1])["arr_0"]  # todo semantic mask???
-            is_sky = semantic != 2  # sky id is 2
-            fg_masks.append(torch.from_numpy(is_sky).unsqueeze(-1))  # todo fg_mask
 
             # load sparse 3d points for each view
             # visualize pts3d for each image
@@ -289,7 +433,7 @@ class Heritage(DataParser):
         i_eval = [i for i, filename in enumerate(image_filenames)
                   if self.files.loc[i, 'split'] == 'test']
 
-        num_train_images = len(i_train)
+        # num_train_images = len(i_train)
         # num_train_images = math.ceil(num_images * self.config.train_split_percentage)
         # num_eval_images = num_images - num_train_images
         # # num_eval_images = 1
@@ -323,11 +467,11 @@ class Heritage(DataParser):
 
         # normalize with scene radius
         radius = scene_config["radius"]
-        scale = 1.0 / (radius * 1.01)
+        scale = 1.0 / (radius * 1.01)  # enlarge the radius a little bit
         origin = np.array(scene_config["origin"]).reshape(1, 3)
         origin = torch.from_numpy(origin)
         poses[:, :3, 3] -= origin
-        poses[:, :3, 3] *= scale  # enlarge the radius a little bit
+        poses[:, :3, 3] *= scale
 
         poses, transform = camera_utils.auto_orient_and_center_poses(
             poses,
@@ -357,9 +501,10 @@ class Heritage(DataParser):
 
         # filter with bbox
         # normalize cropped area to [-1, -1]
-        scene_origin = bbx_min + (bbx_max - bbx_min) / 2
+        scene_origin = origin.numpy()
 
-        points_normalized = (points_ori - scene_origin) / (bbx_max - bbx_min)
+        points_normalized = (points_ori - scene_origin) / (bbx_max - bbx_min) * 2
+        print(f"{(bbx_max - bbx_min)=}")
         # filter out points out of [-1, 1]
         mask = np.prod((points_normalized > -1), axis=-1, dtype=bool) & np.prod(
             (points_normalized < 1), axis=-1, dtype=bool
@@ -419,11 +564,8 @@ class Heritage(DataParser):
 
         # in x,y,z order
         # assumes that the scene is centered at the origin
-        aabb_scale = self.config.scene_scale
         scene_box = SceneBox(
-            aabb=torch.tensor(
-                [[-aabb_scale, -aabb_scale, -aabb_scale], [aabb_scale, aabb_scale, aabb_scale]], dtype=torch.float32
-            ),
+            aabb=torch.from_numpy(np.stack([bbx_min, bbx_max]) * scale),
             coarse_binary_gird=mask,
         )
 
@@ -446,7 +588,6 @@ class Heritage(DataParser):
         cameras = cameras[torch.tensor(indices)]
         image_filenames = [image_filenames[i] for i in indices]
         mask_filenames = [mask_filenames[i] for i in indices]
-        fg_masks = [fg_masks[i] for i in indices]
         if sparse_pts:
             sparse_pts = [sparse_pts[i] for i in indices]
         if dense_pts:
@@ -459,29 +600,20 @@ class Heritage(DataParser):
 
         assert len(cameras) == len(image_filenames)
 
-        # todo semantic classes
+        metadata = {
+            # "masks": {"func": get_masks, "kwargs": {"fg_masks": fg_masks, "sparse_pts": sfm_points}}
+        }
         # --- semantics ---
-        # if self.config.include_semantics:
-        #     empty_path = Path()
-        #     replace_this_path = str(empty_path / images_folder / empty_path)
-        #     with_this_path = str(empty_path / segmentations_folder / "thing" / empty_path)
-        #     filenames = [
-        #         Path(str(image_filename).replace(replace_this_path, with_this_path).replace(".jpg", ".png"))
-        #         for image_filename in image_filenames
-        #     ]
-        #     panoptic_classes = load_from_json(self.config.data / "panoptic_classes.json")
-        #     classes = panoptic_classes["thing"]
-        #     colors = torch.tensor(panoptic_classes["thing_colors"], dtype=torch.float32) / 255.0
-        #     semantics = Semantics(filenames=filenames, classes=classes, colors=colors, mask_classes=["person"])
-
+        if self.config.include_semantics:
+            classes = [id_label_mapping_ade20k[i] for i in range(len(id_label_mapping_ade20k))]
+            semantics = Semantics(filenames=semantic_filenames, classes=classes, colors=None,
+                                  mask_classes=transient_objects)
+            metadata["semantics"] = semantics
         # combine points
         sfm_points = []
         for sparse, dense in itertools.zip_longest(sparse_pts, dense_pts, fillvalue=torch.zeros((0, 4), dtype=torch.float32)):
             sfm_points.append(torch.cat((sparse, dense)))
 
-        metadata = {
-            "masks": {"func": get_masks, "kwargs": {"fg_masks": fg_masks, "sparse_pts": sfm_points}}
-        }
 
         if self.config.include_mono_prior:
             metadata["depth_filenames"] = depth_filenames
