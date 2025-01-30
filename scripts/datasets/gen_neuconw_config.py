@@ -4,20 +4,17 @@ from pathlib import Path
 import numpy as np
 import yaml
 
-from nerfstudio.data.utils.colmap_utils import read_points3d_binary
-
-
-
 def generate_config(scene_root: Path):
-    # genrate origin and bbx
+    # generate origin and bbx
     # import colmap dense model dir to blender using Photogrammetry Addon
-    # Add box and set position and scale
+    # Add (axis aligned) box and set position and scale
+    # box will cut pcd outside and determin bounding sphere radius
     scene_name = scene_root.name
     origin = np.array([-0.98, -0.44, 0.7])  # position
     bb_scale = np.array([5.08, 1.52, 6.02])  # scale
 
     sfm2gt = np.eye(4)
-    scale = (np.linalg.norm(bb_scale, 2).item())
+    scale = (np.linalg.norm(bb_scale, 2).item())  # this is the radius of the sphere encompassing the bb
     level = 5
     print(scale)
 
