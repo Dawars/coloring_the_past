@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import math
+import pandas as pd
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Type
