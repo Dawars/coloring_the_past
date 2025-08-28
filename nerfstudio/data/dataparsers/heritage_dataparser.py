@@ -24,6 +24,7 @@ from typing import Type
 import numpy as np
 import torch
 import yaml
+from PIL import Image
 from rich.progress import Console, track
 from typing_extensions import Literal
 
@@ -208,7 +209,11 @@ class Heritage(DataParser):
             semantic_filenames.append(self.data / "semantic_maps" / img.name.replace(".jpg", ".npz"))
 
             # load mask
-            mask = np.load(mask_filenames[-1])  # ["arr_0"]
+            if mask_filenames[-1].suffix == ".npy":
+                mask = np.load(mask_filenames[-1], allow_pickle=True)  # (H, W)
+                # mask = torch.from_numpy(mask).unsqueeze(-1).bool()
+            else:
+                mask = np.array(Image.open(mask_filenames[-1]).convert('L'))
 
             mask = torch.from_numpy(mask).unsqueeze(-1).bool()
             # save nonzeros_indices so we just compute it once
@@ -216,7 +221,7 @@ class Heritage(DataParser):
             masks.append(nonzero_indices)
 
             # load sky segmentation and it's used as foreground mask
-            semantic = np.load(semantic_filenames[-1])["arr_0"]
+            semantic = np.load(semantic_filenames[-1], allow_pickle=True)["arr_0"]
             is_sky = semantic != 2  # sky id is 2
             fg_masks.append(torch.from_numpy(is_sky).unsqueeze(-1))
 
