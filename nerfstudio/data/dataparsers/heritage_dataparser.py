@@ -76,21 +76,20 @@ class HeritageDataParserConfig(DataParserConfig):
     """target class to instantiate"""
     data: Path = Path("data/phototourism/trevi-fountain")
     """Directory specifying location of data."""
-    scale_factor: float = 3.0
-    """How much to scale the camera origins by."""
     alpha_color: str = "white"
     """alpha color of background"""
-    train_split_percentage: float = 0.9
-    """The percent of images to use for training. The remaining images are for eval."""
     scene_scale: float = 1.0
     """How much to scale the region of interest by."""
     orientation_method: Literal["pca", "up", "none"] = "up"
     """The method to use for orientation."""
     auto_scale_poses: bool = True
     """Whether to automatically scale the poses to fit in +/- 1 bounding box."""
-    center_poses: bool = True
+    center_poses: bool = False
     """Whether to center the poses."""
-
+    """whether or not to include loading of semantics data"""
+    setting: str = ""
+    depth_extension: str = ".npy"
+    """Depth extension, can be e.g. .png, .npy or .npy.gz"""
 
 @dataclass
 class Heritage(DataParser):
@@ -103,14 +102,14 @@ class Heritage(DataParser):
     def __init__(self, config: HeritageDataParserConfig):
         super().__init__(config=config)
         self.data: Path = config.data
-        self.scale_factor: float = config.scale_factor
         self.alpha_color = config.alpha_color
-        self.train_split_percentage = config.train_split_percentage
 
     # pylint: disable=too-many-statements
     def _generate_dataparser_outputs(self, split="train"):
 
-        config_path = self.data / "config.yaml"
+        setting_suffix = '' if self.config.setting == '' else f'_{self.config.setting}'
+        config_path = self.data / f"config{setting_suffix}.yaml"
+        print(f"Config file: {str(config_path)}")
 
         with open(config_path, "r") as yamlfile:
             scene_config = yaml.load(yamlfile, Loader=yaml.FullLoader)
@@ -122,13 +121,41 @@ class Heritage(DataParser):
         bbx_min = np.minimum(sfm_vert1, sfm_vert2)
         bbx_max = np.maximum(sfm_vert1, sfm_vert2)
 
-        image_filenames = []
-        poses = []
 
         with CONSOLE.status(f"[bold green]Reading phototourism images and poses for {split} split...") as _:
             cams = read_cameras_binary(self.data / "dense/sparse/cameras.bin")
             imgs = read_images_binary(self.data / "dense/sparse/images.bin")
             pts3d = read_points3d_binary(self.data / "dense/sparse/points3D.bin")
+
+        img_path_to_id = {}
+        image_list = list(self.data.glob(f"*{setting_suffix}.tsv"))
+        if image_list:
+            print(f"Found .tsv file for image list {image_list[0]}")
+            self.files = pd.read_csv(image_list[0], sep="\t")
+            self.files = self.files[~self.files['id'].isnull()]  # remove data without id
+            self.files.reset_index(inplace=True, drop=True)
+            file_list = list(self.files["filename"])
+
+            for v in imgs.values():
+                img_path_to_id[v.name] = v.id
+            self.img_ids = []
+            self.image_paths = {}  # {id: filename}
+            for filename in list(self.files['filename']):
+                if filename not in img_path_to_id:
+                    continue
+                id_ = img_path_to_id[filename]
+                self.image_paths[id_] = filename
+                self.img_ids += [id_]
+            # for v in imgs.values():
+            #     if v.name in file_list:
+            #         img_path_to_id[v.name] = v.id
+        else:
+            raise f"Image list not found *{setting_suffix}.tsv"
+            # for _id, cam in cams.items():
+            #     img = imgs[_id]
+            #     img_path_to_id[img.name] = img.id
+            #     file_list.append(img.name)
+        # file_list = sorted(file_list)
 
         # key point depth
         pts3d_array = torch.ones(max(pts3d.keys()) + 1, 4)
@@ -142,6 +169,8 @@ class Heritage(DataParser):
         fys = []
         cxs = []
         cys = []
+        heights = []
+        widths = []
         image_filenames = []
         mask_filenames = []
         semantic_filenames = []
@@ -153,8 +182,13 @@ class Heritage(DataParser):
         flip[0, 0] = -1.0
         flip = flip.double()
 
-        for _id, cam in cams.items():
+        for filename in file_list:
+            if filename not in img_path_to_id.keys():
+                print(f"image {filename} not found in sfm result!!")
+                continue
+            _id = img_path_to_id[filename]
             img = imgs[_id]
+            cam = cams[img.camera_id]
 
             assert cam.model == "PINHOLE", "Only pinhole (perspective) camera model is supported at the moment"
 
@@ -165,9 +199,11 @@ class Heritage(DataParser):
             fys.append(torch.tensor(cam.params[1]))
             cxs.append(torch.tensor(cam.params[2]))
             cys.append(torch.tensor(cam.params[3]))
+            heights.append(torch.tensor(cam.height))
+            widths.append(torch.tensor(cam.width))
 
             image_filenames.append(self.data / "dense/images" / img.name)
-            mask_filenames.append(self.data / "masks" / img.name.replace(".jpg", ".npy"))
+            mask_filenames.append(self.data / "masks" / img.name.replace(".jpg", ".png"))
             semantic_filenames.append(self.data / "semantic_maps" / img.name.replace(".jpg", ".npz"))
 
             # load mask
@@ -205,17 +241,17 @@ class Heritage(DataParser):
         fys = torch.stack(fys).float()
         cxs = torch.stack(cxs).float()
         cys = torch.stack(cys).float()
+        heights = torch.stack(heights)
+        widths = torch.stack(widths)
 
         # filter image_filenames and poses based on train/eval split percentage
-        num_images = len(image_filenames)
-        num_train_images = math.ceil(num_images * self.config.train_split_percentage)
-        num_eval_images = num_images - num_train_images
-        i_all = np.arange(num_images)
-        i_train = np.linspace(
-            0, num_images - 1, num_train_images, dtype=int
-        )  # equally spaced training images starting and ending at 0 and num_images-1
-        i_eval = np.setdiff1d(i_all, i_train)  # eval images are the remaining images
-        assert len(i_eval) == num_eval_images
+
+        # Step 5. split the img_ids (the number of images is verfied to match that in the paper)
+        i_train = [i for i, filename in enumerate(image_filenames)
+                   if self.files.loc[i, 'split'] == 'train']
+        i_eval = [i for i, filename in enumerate(image_filenames)
+                  if self.files.loc[i, 'split'] == 'test']
+
         if split == "train":
             indices = i_train
         elif split in ["val", "test"]:
@@ -240,22 +276,21 @@ class Heritage(DataParser):
 
         # normalize with scene radius
         radius = scene_config["radius"]
+        scale = 1.0 / (radius * 1.01)
         origin = np.array(scene_config["origin"]).reshape(1, 3)
         origin = torch.from_numpy(origin)
         poses[:, :3, 3] -= origin
-        poses[:, :3, 3] *= 1.0 / (radius * 1.01)  # enlarge the radius a little bit
+        poses[:, :3, 3] *= scale  # enlarge the radius a little bit
 
-        poses, transform = camera_utils.auto_orient_and_center_poses(
-            poses,
-            method=self.config.orientation_method,
-            center_poses=False,
+        poses, transform_matrix = camera_utils.auto_orient_and_center_poses(
+            poses, method=self.config.orientation_method, center_poses=False,
         )
 
         # scale pts accordingly
         for pts in sparse_pts:
             pts[:, :3] -= origin
-            pts[:, :3] *= 1.0 / (radius * 1.01)  # should be the same as pose preprocessing
-            pts[:, :3] = pts[:, :3] @ transform[:3, :3].t() + transform[:3, 3:].t()
+            pts[:, :3] *= scale  # should be the same as pose preprocessing
+            pts[:, :3] = pts[:, :3] @ transform_matrix[:3, :3].t() + transform_matrix[:3, 3:].t()
 
         # create occupancy grid from sparse points
         points_ori = []
@@ -283,8 +318,8 @@ class Heritage(DataParser):
 
         # scale pts accordingly
         points_ori -= origin
-        points_ori[:, :3] *= 1.0 / (radius * 1.01)  # should be the same as pose preprocessing
-        points_ori[:, :3] = points_ori[:, :3] @ transform[:3, :3].t() + transform[:3, 3:].t()
+        points_ori[:, :3] *= scale  # should be the same as pose preprocessing
+        points_ori[:, :3] = points_ori[:, :3] @ transform_matrix[:3, :3].t() + transform_matrix[:3, 3:].t()
 
         print(points_ori.shape)
 
@@ -344,6 +379,8 @@ class Heritage(DataParser):
             fy=fys,
             cx=cxs,
             cy=cys,
+            width=widths,
+            height=heights,
             camera_type=CameraType.PERSPECTIVE,
         )
 
@@ -364,6 +401,8 @@ class Heritage(DataParser):
             image_filenames=image_filenames,
             cameras=cameras,
             scene_box=scene_box,
+            dataparser_transform=transform_matrix,
+            dataparser_scale=scale,
             additional_inputs={
                 "masks": {"func": get_masks, "kwargs": {"masks": masks, "fg_masks": fg_masks, "sparse_pts": sparse_pts}}
             },
