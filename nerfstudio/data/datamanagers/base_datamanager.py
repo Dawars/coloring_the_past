@@ -56,7 +56,7 @@ from nerfstudio.data.pixel_samplers import EquirectangularPixelSampler, PixelSam
 from nerfstudio.data.utils.dataloaders import (
     CacheDataloader,
     FixedIndicesEvalDataloader,
-    RandIndicesEvalDataloader,
+    LoopingEvalDataloader,
 )
 from nerfstudio.data.utils.nerfstudio_collate import nerfstudio_collate
 from nerfstudio.engine.callbacks import TrainingCallback, TrainingCallbackAttributes
@@ -413,7 +413,7 @@ class VanillaDataManager(DataManager):  # pylint: disable=abstract-method
             num_workers=self.world_size * 2,
             shuffle=False,
         )
-        self.eval_dataloader = RandIndicesEvalDataloader(
+        self.eval_dataloader = LoopingEvalDataloader(
             input_dataset=self.eval_dataset,
             image_indices=self.config.eval_image_indices,
             device=self.device,
